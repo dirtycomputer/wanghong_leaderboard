@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dirtycomputer/wanghong_leaderboard/schemas/cited_sources.schema.json",
+  "title": "cited_sources.json",
+  "description": "Deduplicated list of corpus papers a harness explicitly used. Judge A re-checks every arxiv_id against the corpus manifest; entries pointing at papers outside the corpus are disqualifying.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["arxiv_id", "claim"],
+    "additionalProperties": false,
+    "properties": {
+      "arxiv_id": {
+        "type": "string",
+        "pattern": "^[0-9]{4}\\.[0-9]{4,5}(v[0-9]+)?$"
+      },
+      "claim": { "type": "string", "minLength": 1 },
+      "where_used": { "type": "string" }
+    }
+  }
+}

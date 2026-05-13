@@ -33,3 +33,16 @@ def test_extract_raises_on_garbage():
 def test_extract_raises_on_empty():
     with pytest.raises(JudgeError):
         _extract_json("")
+
+
+def test_extract_handles_latex_backslashes_in_strings():
+    # LLMs writing math output frequently emit ``\mathbb{R}`` etc. inside
+    # JSON string values, which json.loads rejects because ``\m`` is not
+    # a valid escape. The extractor must double-escape and retry.
+    text = (
+        '```json\n{"notes": "The Kakeya conjecture in $\\mathbb{R}^3$ '
+        'uses $\\delta$-tubes."}\n```'
+    )
+    obj = _extract_json(text)
+    assert obj["notes"].startswith("The Kakeya conjecture")
+    assert "mathbb" in obj["notes"]

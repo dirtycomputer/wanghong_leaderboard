@@ -184,6 +184,35 @@ def test_orchestrator_applies_d_fatal_gap_cap(tmp_path: Path):
     assert report["verdict"] == "FLAGGED"
 
 
+def test_orchestrator_verdict_flagged_when_cap_is_non_binding(tmp_path: Path):
+    """A submission that scores below a non-binding cap is still FLAGGED."""
+    sub = _write_sub(tmp_path)
+    gold = _write_gold(tmp_path)
+    # Judge D reports a fatal gap (cap=70) but the underlying axes
+    # are weak enough that the weighted score is below 70.
+    bad_d = {
+        "fatal_gap_found": True,
+        "first_fatal_gap": {
+            "location": "X",
+            "description": "broken",
+            "severity": "fatal",
+        },
+        "correctness_subscore": 5,
+        "gap_resistance_subscore": 5,
+    }
+    web = FakeClient(payloads=[_GOOD_PAYLOADS["B"], _GOOD_PAYLOADS["E"]])
+    offline = FakeClient(payloads=[_GOOD_PAYLOADS["C"], bad_d])
+    report = evaluate(
+        sub,
+        clients=OrchestratorClients(web_client=web, offline_client=offline),
+        gold_graph_path=gold,
+    )
+    assert report["weighted_score"] < 70.0
+    # Cap was non-binding, so applied_caps is empty, but verdict still flags.
+    assert report["applied_caps"] == []
+    assert report["verdict"] == "FLAGGED"
+
+
 def test_orchestrator_output_matches_schema(tmp_path: Path):
     sub = _write_sub(tmp_path)
     gold = _write_gold(tmp_path)

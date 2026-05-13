@@ -186,6 +186,12 @@ def _flatten_parts(content: Any) -> str:
 
 _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
 _FIRST_JSON_RE = re.compile(r"(\{.*\}|\[.*\])", re.DOTALL)
+# Matches a backslash followed by a character that is NOT a legal JSON
+# escape. Mathematical LLM output frequently contains things like
+# ``\mathbb{R}`` or ``\delta`` inside string values; json.loads rejects
+# the lone backslash. We retry after doubling those backslashes so the
+# resulting JSON still decodes the same string content.
+_BAD_JSON_ESCAPE_RE = re.compile(r'\\(?!["\\/bfnrtu])')
 
 
 def _extract_json(text: str) -> Any:
@@ -193,7 +199,7 @@ def _extract_json(text: str) -> Any:
     if not text:
         raise JudgeError("judge returned empty text")
     fenced = _JSON_FENCE_RE.search(text)
-    candidates = []
+    candidates: list[str] = []
     if fenced:
         candidates.append(fenced.group(1).strip())
     candidates.append(text.strip())
@@ -202,9 +208,10 @@ def _extract_json(text: str) -> Any:
         candidates.append(open_match.group(1).strip())
     last_err: Exception | None = None
     for cand in candidates:
-        try:
-            return json.loads(cand)
-        except json.JSONDecodeError as exc:
-            last_err = exc
-            continue
+        for variant in (cand, _BAD_JSON_ESCAPE_RE.sub(r"\\\\", cand)):
+            try:
+                return json.loads(variant)
+            except json.JSONDecodeError as exc:
+                last_err = exc
+                continue
     raise JudgeError(f"could not parse JSON from judge output: {last_err}")

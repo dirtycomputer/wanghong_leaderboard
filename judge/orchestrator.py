@@ -85,6 +85,11 @@ def evaluate(
         all_caps.extend(c2 for c2 in caps if c2.cap < 100.0)
 
     weighted, final, applied = apply_rubric(subscores, all_caps)
+    # ``applied`` is the subset of caps that actually bound the final
+    # score. For the public verdict we want to flag the submission
+    # whenever *any* judge reported a cap — otherwise a baseline that
+    # already scores below a 70-point fatal-gap cap looks RANKED.
+    verdict_caps = all_caps if all_caps else applied
     eval_version = EvalVersion(
         evaluation_id=make_evaluation_id(),
         rubric_version=rubric_version,
@@ -131,7 +136,7 @@ def evaluate(
         "weighted_score": weighted,
         "applied_caps": [c.as_dict() for c in applied],
         "final_score": final,
-        "verdict": verdict_from(final, applied),
+        "verdict": verdict_from(final, verdict_caps),
         "judge_models": [j.as_dict() for j in eval_version.judge_models],
     }
 

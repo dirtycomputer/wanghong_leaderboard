@@ -102,6 +102,7 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("extractor returned non-object JSON")
         return 2
     graph.setdefault("schema_version", "1.0")
+    _normalize_in_place(graph)
 
     errors = validate_against(graph, PROOF_GRAPH_SCHEMA_PATH)
     if errors:
@@ -136,6 +137,41 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("wrote %s (%d new_lemmas)", args.out, len(graph.get("new_lemmas") or []))
     print(args.out)
     return 0
+
+
+_ARXIV_PREFIX_RE = __import__("re").compile(r"^(?:arXiv:)?(.+)$")
+_SEVERITY_ALIASES: dict[str, str] = {
+    "low": "minor",
+    "medium": "moderate",
+    "major": "fatal",
+    "high": "fatal",
+    "critical": "fatal",
+}
+
+
+def _normalize_in_place(graph: dict) -> None:
+    """Light post-processing for common LLM-output quirks.
+
+    Strips ``arXiv:`` prefixes off citation IDs and maps severity
+    aliases onto the schema's enum. Does not invent values.
+    """
+    for dep in graph.get("pre_cutoff_dependencies") or []:
+        if isinstance(dep, dict):
+            aid = dep.get("arxiv_id")
+            if isinstance(aid, str):
+                m = _ARXIV_PREFIX_RE.match(aid.strip())
+                if m:
+                    dep["arxiv_id"] = m.group(1)
+    for gap in graph.get("known_gaps") or []:
+        if isinstance(gap, dict):
+            sev = gap.get("severity")
+            if isinstance(sev, str):
+                gap["severity"] = _SEVERITY_ALIASES.get(sev.lower(), sev.lower())
+    for lemma in graph.get("new_lemmas") or []:
+        if isinstance(lemma, dict):
+            ps = lemma.get("proof_status")
+            if isinstance(ps, str):
+                lemma["proof_status"] = ps.lower()
 
 
 if __name__ == "__main__":

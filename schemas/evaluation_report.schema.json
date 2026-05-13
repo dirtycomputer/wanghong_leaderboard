@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dirtycomputer/wanghong_leaderboard/schemas/evaluation_report.schema.json",
+  "title": "evaluation_report.json",
+  "description": "Output of the 5-layer judge orchestrator. Pinned to the rubric + judge model versions that produced it so historical scores stay reproducible.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evaluation_id",
+    "rubric_version",
+    "submission",
+    "judges",
+    "weighted_score",
+    "applied_caps",
+    "final_score",
+    "verdict"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "evaluation_id": { "type": "string", "minLength": 1 },
+    "rubric_version": { "type": "string", "minLength": 1 },
+    "gold_graph_hash": { "type": ["string", "null"] },
+    "target_paper_parse_hash": { "type": ["string", "null"] },
+    "submission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string" },
+        "harness_name": { "type": ["string", "null"] },
+        "harness_version": { "type": ["string", "null"] },
+        "corpus_hash": { "type": ["string", "null"] }
+      }
+    },
+    "judges": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["A", "B", "C", "D", "E"],
+      "properties": {
+        "A": { "type": "object" },
+        "B": { "type": "object" },
+        "C": { "type": "object" },
+        "D": { "type": "object" },
+        "E": { "type": "object" }
+      }
+    },
+    "subscores": {
+      "type": "object",
+      "additionalProperties": { "type": "number" },
+      "description": "Per-axis scores in [0,100] that feed the weighted score."
+    },
+    "weighted_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "applied_caps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["reason", "cap"],
+        "additionalProperties": false,
+        "properties": {
+          "reason": { "type": "string" },
+          "cap": { "type": "number", "minimum": 0, "maximum": 100 },
+          "source": { "type": "string" }
+        }
+      }
+    },
+    "final_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "verdict": {
+      "type": "string",
+      "enum": ["RANKED", "FLAGGED", "CONTAMINATED", "DISQUALIFIED", "FAILED"]
+    },
+    "judge_models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["role", "model"],
+        "additionalProperties": false,
+        "properties": {
+          "role": { "type": "string" },
+          "model": { "type": "string" },
+          "web_access": { "type": "boolean" },
+          "provider": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

@@ -33,7 +33,7 @@ can re-derive it from first principles + open literature.
 | `scripts/parse_target_paper.py` | Vault pipeline for `arXiv:2502.17655` → `judge/vault/target_paper/` (never enters public corpus). |
 | `tests/` | Mocked-HTTP tests for arXiv parsing, cutoff enforcement, MinerU zip curation, manifest determinism, vault cross-leak guard. |
 
-**P3 — runner + schemas + starter** (this branch):
+**P3 — runner + schemas + starter** (merged):
 
 | Path | Purpose |
 | --- | --- |
@@ -44,8 +44,23 @@ can re-derive it from first principles + open literature.
 | `starter/` | Fork-and-go template: Dockerfile, run.sh, harness.yaml, src/main.py (single-shot baseline), src/model_client.py, src/write_outputs.py, README. |
 | `cli/kakeya_lb/` | Local helper CLI: `kakeya-lb init <dir>`, `kakeya-lb validate`, `kakeya-lb schema-check`. |
 
-Subsequent slices (P4 judge stack, P5 baselines + alpha, P6 public
-leaderboard) build on top of this.
+**P4 — 5-layer judge stack** (this branch):
+
+| Path | Purpose |
+| --- | --- |
+| `judge/client.py` | OpenRouter client for the judge stack: reads `OPENROUTER_JUDGE_KEY`, defaults to a frontier model, optional web plugin (only B / E need it). |
+| `judge/a_protocol.py` | Pure-program checks: schema validation, citation containment vs `corpus/manifest.jsonl`, phrase-bank scan replaying the Gemma canary patterns. DQ caps for missing files, leaked phrases, or citations outside the corpus. |
+| `judge/b_contamination.py` | Hostile contamination auditor with web search. Severity (`none → major`) maps to caps (medium → 80; major / `disqualify` action → 0). |
+| `judge/c_gold_graph.py` | Per-axis structural alignment against the hidden gold proof graph (target theorem / core mechanism / lemma chain / final implication). |
+| `judge/d_adversarial.py` | Hostile referee that locates the first fatal gap. Severity caps: `fatal` → 70, `major` → 65. |
+| `judge/e_novelty.py` | Open-world novelty audit with web. Classification → novelty score; `leak` short-circuits to DQ. |
+| `judge/orchestrator.py` | Runs A→E (short-circuits B-E if A returns a DQ cap), applies caps, writes `evaluation_report.json` matching `schemas/evaluation_report.schema.json`. Records the judge model + rubric + gold-graph hash so historical scores stay reproducible. |
+| `judge/rubric.py` | Weighted score (protocol .20 / gold-graph .25 / correctness .25 / gap-resistance .15 / novelty .10 / clarity .05) and cap arithmetic. |
+| `scripts/build_gold_graph.py` | LLM-only MVP extractor: `judge/vault/target_paper/full.md` → `judge/vault/gold_graph.json` (validated against `proof_graph.schema.json`). Hand-review before public beta. |
+| `scripts/judge_submission.py` | End-to-end CLI: `python -m scripts.judge_submission --submission <dir> --gold-graph judge/vault/gold_graph.json`. |
+
+Subsequent slices (P5 baselines + alpha, P6 public leaderboard) build
+on top of this.
 
 ## Quick start
 
@@ -84,6 +99,15 @@ export $(grep -v '^#' .env | xargs)
 .venv/bin/kakeya-lb init my-harness
 .venv/bin/kakeya-lb validate my-harness
 .venv/bin/kakeya-lb schema-check my-harness/output  # after a run
+
+# 8. Build the hidden gold proof graph (P4). Requires OPENROUTER_JUDGE_KEY.
+.venv/bin/python -m scripts.build_gold_graph
+
+# 9. Score a finished submission with the 5-layer judge stack.
+.venv/bin/python -m scripts.judge_submission \
+    --submission runs/example/output \
+    --corpus-manifest corpus/manifest.jsonl \
+    --gold-graph judge/vault/gold_graph.json
 ```
 
 The canary writes a JSON + Markdown report to `reports/canary/`. The
@@ -133,10 +157,10 @@ for reproducibility.
 | Phase | Status | Deliverable |
 | --- | --- | --- |
 | P1 Bootstrap + Safety | merged | proxy + canary + tests |
-| P2 Corpus pipeline | PR #2 | arXiv harvester (`submittedDate < 2025-01-01 GMT`) + MinerU v4 parse + `manifest.jsonl` + `corpus_hash` + vault pipeline for target paper |
-| P3 Runner + schemas + starter | this PR | Docker sandbox runner (`--network kakeya-internal`, immutable digest only), JSON schemas, fork-and-go starter, `kakeya-lb` CLI |
-| P4 Judge stack | next | 5-layer judges (protocol / contamination / gold-graph / adversarial / novelty); LLM-only gold graph for MVP |
-| P5 Baselines + alpha | | 4 baseline harnesses, public rules, evaluator versioning |
+| P2 Corpus pipeline | merged | arXiv harvester (`submittedDate < 2025-01-01 GMT`) + MinerU v4 parse + `manifest.jsonl` + `corpus_hash` + vault pipeline for target paper |
+| P3 Runner + schemas + starter | merged | Docker sandbox runner (`--network kakeya-internal`, immutable digest only), JSON schemas, fork-and-go starter, `kakeya-lb` CLI |
+| P4 Judge stack | this PR | 5-layer judges (protocol / contamination / gold-graph / adversarial / novelty); LLM-only gold graph for MVP; rubric + caps; evaluation_report schema |
+| P5 Baselines + alpha | next | 4 baseline harnesses, public rules, evaluator versioning |
 | P6 Public leaderboard | | Web UI, anti-cheat dashboard, historical scores |
 
 See `docs/PUBLIC_RULES.md` (stub) and the design discussion in the

@@ -82,12 +82,39 @@ including `arXiv:2502.17655`, is marked contaminated or disqualified.
 
 ## Hard caps
 
-| Condition | Cap |
-| --- | --- |
-| Direct mention of `arXiv:2502.17655`, the verbatim paper title, or "Wang-Zahl 2025" | Disqualified / Contaminated |
-| Citation of any source submitted after 2025-01-01 | Disqualified |
-| Only literature survey, no new proof mechanism | ≤ 45 |
-| Plausible strategy but key lemma unproved | ≤ 65 |
-| Fatal mathematical gap in the proof chain | ≤ 70 |
-| High gold-graph overlap with medium contamination risk | ≤ 80, flagged |
-| Expert-accepted proof-level route | ≥ 90 |
+Applied by the rubric (`judge/rubric.py`) after weighted scoring.
+The lowest binding cap wins.
+
+| Condition | Cap | Source |
+| --- | --- | --- |
+| Direct mention of `arXiv:2502.17655`, the verbatim paper title, or `Wang-Zahl` | DQ | Judge A protocol |
+| Cited arXiv id is not in the time-capsule corpus manifest | DQ | Judge A protocol |
+| Missing any of the five required output files | DQ | Judge A protocol |
+| Judge B confirms `severity: major` post-cutoff evidence | DQ | Judge B contamination |
+| Judge B recommends `disqualify` or `contaminated_not_ranked` | DQ | Judge B contamination |
+| Judge E classifies submission as `leak` | DQ | Judge E novelty |
+| Only literature survey, no new lemmas | ≤ 45 | Judge A protocol |
+| Major (sub-fatal) gap or key lemma only sketched | ≤ 65 | Judge D adversarial |
+| Fatal mathematical gap in the proof chain | ≤ 70 | Judge D adversarial |
+| Judge B reports `severity: moderate` post-cutoff risk | ≤ 80 | Judge B contamination |
+| Expert-accepted proof-level route | ≥ 90 | weighted score |
+
+## Scoring axes (sum to 100)
+
+| Axis | Weight | Source |
+| --- | --- | --- |
+| Protocol / contamination / reproducibility | 20% | Judges A + B |
+| Hidden gold-graph alignment | 25% | Judge C |
+| Mathematical correctness | 25% | Judge D |
+| Adversarial gap resistance | 15% | Judge D |
+| Novelty / independence | 10% | Judge E |
+| Clarity / auditability | 5% | Judge A |
+
+## Evaluation versioning
+
+Every `evaluation_report.json` records `evaluation_id`,
+`rubric_version` (`kakeya3d-rubric-v0.1`), the judge model slugs (B, C,
+D, E), the SHA-256 of the gold proof graph in use, and the SHA-256 of
+the MinerU parse of the target paper. Updating the rubric or any
+judge model produces a *new* versioned score and does not silently
+overwrite older ones on the public leaderboard.

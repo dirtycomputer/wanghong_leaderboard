@@ -20,6 +20,7 @@ dependencies = [
     "orjson>=3.10",
     "tenacity>=8.3",
     "python-dotenv>=1.0",
+    "jsonschema>=4.22",
 ]
 
 [project.optional-dependencies]
@@ -32,11 +33,12 @@ dev = [
 
 [project.scripts]
 wh-canary = "scripts.canary_gemma:main"
+kakeya-lb = "cli.kakeya_lb.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["proxy*", "corpus*", "judge*", "runner*", "scripts*"]
-exclude = ["tests*", "judge.vault*"]
+include = ["proxy*", "corpus*", "judge*", "runner*", "scripts*", "cli*"]
+exclude = ["tests*", "judge.vault*", "starter*"]
 
 [tool.ruff]
 line-length = 100

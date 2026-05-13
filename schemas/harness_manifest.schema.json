@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dirtycomputer/wanghong_leaderboard/schemas/harness_manifest.schema.json",
+  "title": "harness.yaml",
+  "description": "Participant-supplied metadata that the official runner validates *before* spending a token. Lives at the root of the participant repo.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "version", "license", "entrypoint", "resources", "tracks", "outputs", "claims"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "version": { "type": "string", "minLength": 1 },
+    "license": { "type": "string", "minLength": 1 },
+    "authors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "affiliation": { "type": "string" },
+          "email": { "type": "string", "format": "email" }
+        }
+      }
+    },
+    "entrypoint": {
+      "type": "string",
+      "description": "Shell command (relative to the container WORKDIR) that the runner invokes. Receives --task, --corpus, --output, --model-api-base, --model-api-key."
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_wall_time_hours", "max_model_calls", "max_total_tokens", "cpu", "memory_gb"],
+      "properties": {
+        "max_wall_time_hours": { "type": "number", "minimum": 0.1, "maximum": 48 },
+        "max_model_calls": { "type": "integer", "minimum": 1, "maximum": 100000 },
+        "max_total_tokens": { "type": "integer", "minimum": 1, "maximum": 50000000 },
+        "cpu": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "memory_gb": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "gpu": { "type": "boolean", "default": false }
+      }
+    },
+    "tracks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "zero_shot_single_prompt",
+          "literature_retrieval_only",
+          "agentic_research",
+          "structured_proof_search"
+        ]
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["final_proof", "proof_graph", "citations", "self_critique", "trace"],
+      "properties": {
+        "final_proof": { "type": "string", "const": "final_proof.md" },
+        "proof_graph": { "type": "string", "const": "proof_graph.json" },
+        "citations": { "type": "string", "const": "cited_sources.json" },
+        "self_critique": { "type": "string", "const": "self_critique.md" },
+        "trace": { "type": "string", "const": "trace.jsonl" }
+      }
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uses_external_apis", "requires_network", "uses_precomputed_embeddings"],
+      "properties": {
+        "uses_external_apis": {
+          "type": "boolean",
+          "description": "Must be false. The runner refuses to start otherwise."
+        },
+        "requires_network": {
+          "type": "boolean",
+          "description": "Must be false. Only the leaderboard proxy is reachable from the participant container."
+        },
+        "uses_precomputed_embeddings": { "type": "boolean" },
+        "notes": { "type": "string", "maxLength": 1000 }
+      }
+    }
+  }
+}

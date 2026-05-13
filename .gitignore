@@ -10,7 +10,11 @@ judge/vault/*
 corpus/cache/
 corpus/papers/
 corpus/manifest.jsonl
+corpus/corpus_hash.txt
 corpus/*.tar.zst
+
+# Local scratch / one-off helpers (kept outside the package layout).
+scratch/
 
 # Canary reports may contain raw model output that hints at contamination —
 # treat as sensitive by default.

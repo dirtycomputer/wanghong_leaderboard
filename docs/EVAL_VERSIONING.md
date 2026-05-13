@@ -66,6 +66,32 @@ If the rotation also changes how caps fire (e.g. a stricter
 adversarial judge starts reporting `fatal` more aggressively), bump
 `RUBRIC_VERSION` as well.
 
+## Known calibration drifts
+
+The first end-to-end live runs (10-paper demo corpus, Llama 3.3 70B
+judges, Gemma 4 31B IT generation, post-P5.1) surfaced these
+calibration patterns. They are **expected** — documenting them so
+maintainers don't keep re-discovering them — and should be revisited
+whenever the rubric or judge models are bumped.
+
+| Pattern | Where it shows up | Why it's expected | When to revisit |
+| --- | --- | --- | --- |
+| **Judge D fires `fatal_gap_found=True` on every Gemma baseline** | All four reference baselines hit `correctness ≤ 20`, `gap_resistance ≤ 40`. | Gemma cannot actually prove the conjecture; "fatal gap" is the truthful verdict. The cap (≤70) doesn't bind because subscores are already low. | Once a baseline genuinely scores above ~60 on the unguarded axes, re-prompt Judge D to demand richer error categorisation so non-trivial improvements register. |
+| **Survey-only cap (≤45) is the ceiling for any baseline that fails JSON extraction** | `agentic_self_critique` produced 0 `new_lemmas` because Gemma's final-summary call returned malformed JSON. | The participant proxy intentionally rejects `tools` / `function_call` / structured-output server features (P1 policy). Baselines must rely on prompt engineering alone. | If/when reliable structured output becomes available without breaking the time-capsule policy, lift this for baselines (not for participants). |
+| **Judge B conjecture-statement carve-out is mandatory** | Without `_filter_conjecture_statements` (P5.1) every `target_theorem` literal triggered a CONTAMINATED DQ. | "Every Kakeya set in R^n has Hausdorff dimension n" has been public since 1971 but is also the first sentence of arXiv:2502.17655. | Whenever the gold paper is replaced or the judge model rotated, re-test the conjecture-statement test bench in `tests/test_judge_llm_layers.py`. |
+| **arXiv ID schema must accept pre-2007 short form** | The Kakeya canon (Tao 1998 `9807163`, Katz 2000 `0010069`, Wolff 2002 `0102135`) is heavily pre-2007. | The new `YYMM.NNNNN` format only started in April 2007. | If a future regex rotation re-tightens the pattern, run the live baselines and check `protocol` / `clarity` for any retrieval baseline. |
+| **Score range for unprepared baselines clusters at 35-52** | Post-P5.1 reference scores: `planner_verifier` 52.2, `zero_shot` 45.0 (cap), `agentic` 45.0 (cap), `rag_synthesis` 35.8. | None of the baselines try to actually solve the problem. Variance comes from how well each handles the schema + survives the survey-only cap. | If baselines start reaching the 60+ band, the survey-only cap probably needs raising (right now it dominates the band). |
+| **Llama 3.3 70B as judge is acceptable but conservative** | Provider TOS blocks Anthropic / OpenAI / Google models on the experiment account; judges fall back to Llama. | Llama 70B is competent at structural alignment but more lenient on adversarial gap-finding than a frontier model. | Once a frontier judge model is reachable on the judge OpenRouter key, run all four baselines through it and record the new `evaluation_id` alongside the Llama scores in `docs/EVAL_VERSIONING.md`. |
+
+When updating the rubric, judges, or gold graph, the maintainer
+checklist is:
+
+1. Re-run the four reference baselines with `scripts.run_baseline`.
+2. Re-score them with `scripts.judge_submission`.
+3. If any score moves >10 points on a single axis without an obvious
+   cause, add a row to this table before publishing the new
+   `rubric_version` / `evaluation_id`.
+
 ## Building a new gold graph
 
 The MVP gold graph (`source: "llm_extraction"`) is replaced before the

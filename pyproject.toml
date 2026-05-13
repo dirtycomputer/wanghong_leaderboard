@@ -37,8 +37,14 @@ kakeya-lb = "cli.kakeya_lb.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["proxy*", "corpus*", "judge*", "runner*", "scripts*", "cli*"]
+include = [
+    "proxy*", "corpus*", "judge*", "runner*", "scripts*", "cli*",
+    "baselines*", "leaderboard*",
+]
 exclude = ["tests*", "judge.vault*", "starter*"]
+
+[tool.setuptools.package-data]
+leaderboard = ["static/*.css"]
 
 [tool.ruff]
 line-length = 100

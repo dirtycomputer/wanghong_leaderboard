@@ -44,7 +44,7 @@ can re-derive it from first principles + open literature.
 | `starter/` | Fork-and-go template: Dockerfile, run.sh, harness.yaml, src/main.py (single-shot baseline), src/model_client.py, src/write_outputs.py, README. |
 | `cli/kakeya_lb/` | Local helper CLI: `kakeya-lb init <dir>`, `kakeya-lb validate`, `kakeya-lb schema-check`. |
 
-**P4 — 5-layer judge stack** (this branch):
+**P4 — 5-layer judge stack** (PR #4):
 
 | Path | Purpose |
 | --- | --- |
@@ -59,8 +59,20 @@ can re-derive it from first principles + open literature.
 | `scripts/build_gold_graph.py` | LLM-only MVP extractor: `judge/vault/target_paper/full.md` → `judge/vault/gold_graph.json` (validated against `proof_graph.schema.json`). Hand-review before public beta. |
 | `scripts/judge_submission.py` | End-to-end CLI: `python -m scripts.judge_submission --submission <dir> --gold-graph judge/vault/gold_graph.json`. |
 
-Subsequent slices (P5 baselines + alpha, P6 public leaderboard) build
-on top of this.
+**P5 — reference baselines + alpha rules** (this branch):
+
+| Path | Purpose |
+| --- | --- |
+| `baselines/zero_shot.py` | Single Gemma call, no retrieval. Survey-only by design — expected to hit the rubric's 45-cap. |
+| `baselines/rag_synthesis.py` | Keyword retrieval over `corpus/manifest.jsonl` + single synthesis call with top-k stuffed context. Cites the retrieved arXiv ids. |
+| `baselines/planner_verifier.py` | 3-call loop: planner emits a JSON plan → hostile verifier critiques → planner revises. Extracts `new_lemmas` from the revised plan. |
+| `baselines/agentic_self_critique.py` | Budget-bounded iterate-retrieve-propose-critique loop, then one final summary call that emits the full proof graph. |
+| `baselines/common/` | Shared helpers (`chat`, corpus retrieval, output writer, `BaselineContext`) — every baseline is `chat`-injectable for tests. |
+| `scripts/run_baseline.py` | Top-level CLI: `python -m scripts.run_baseline --baseline rag_synthesis --task ... --corpus ... --output ...`. |
+| `docs/PUBLIC_RULES.md` | Alpha-ready rules: corpus / runtime / generation / evaluation policies, hard caps, scoring axes, eval versioning, reference baselines. |
+| `docs/EVAL_VERSIONING.md` | Lifecycle for the four version axes (corpus / gold-graph / rubric / judge models) and how the leaderboard preserves historical scores. |
+
+Subsequent slices (P6 public leaderboard web UI) build on top of this.
 
 ## Quick start
 
@@ -159,9 +171,9 @@ for reproducibility.
 | P1 Bootstrap + Safety | merged | proxy + canary + tests |
 | P2 Corpus pipeline | merged | arXiv harvester (`submittedDate < 2025-01-01 GMT`) + MinerU v4 parse + `manifest.jsonl` + `corpus_hash` + vault pipeline for target paper |
 | P3 Runner + schemas + starter | merged | Docker sandbox runner (`--network kakeya-internal`, immutable digest only), JSON schemas, fork-and-go starter, `kakeya-lb` CLI |
-| P4 Judge stack | this PR | 5-layer judges (protocol / contamination / gold-graph / adversarial / novelty); LLM-only gold graph for MVP; rubric + caps; evaluation_report schema |
-| P5 Baselines + alpha | next | 4 baseline harnesses, public rules, evaluator versioning |
-| P6 Public leaderboard | | Web UI, anti-cheat dashboard, historical scores |
+| P4 Judge stack | PR #4 | 5-layer judges (protocol / contamination / gold-graph / adversarial / novelty); LLM-only gold graph for MVP; rubric + caps; evaluation_report schema |
+| P5 Baselines + alpha | this PR | 4 reference baselines + `run_baseline` CLI + alpha public rules + evaluator versioning doc |
+| P6 Public leaderboard | next | Web UI, anti-cheat dashboard, historical scores |
 
-See `docs/PUBLIC_RULES.md` (stub) and the design discussion in the
-project notes for the full plan.
+See `docs/PUBLIC_RULES.md` and `docs/EVAL_VERSIONING.md` for the full
+plan.

@@ -1,7 +1,9 @@
-# Public rules (draft)
+# Public rules — alpha
 
-> **Status:** stub. Final wording will be locked once the canary
-> verdict is `CLEAN` and the corpus + judge stack are stable.
+> **Status:** alpha. The wording, weights, and caps below are stable
+> for the duration of `rubric_version = kakeya3d-rubric-v0.1`. Bumps
+> to the rubric version will be announced and historical scores will
+> remain visible under their original `evaluation_id`.
 
 ## One-sentence rule
 
@@ -117,4 +119,24 @@ Every `evaluation_report.json` records `evaluation_id`,
 D, E), the SHA-256 of the gold proof graph in use, and the SHA-256 of
 the MinerU parse of the target paper. Updating the rubric or any
 judge model produces a *new* versioned score and does not silently
-overwrite older ones on the public leaderboard.
+overwrite older ones on the public leaderboard. See
+[`docs/EVAL_VERSIONING.md`](EVAL_VERSIONING.md) for the full lifecycle
+description.
+
+## Reference baselines
+
+The leaderboard team publishes four maintained reference scores
+against every corpus / rubric / judge-model version. They run the
+same participant API surface as third-party submissions:
+
+| Baseline | Calls | What it does |
+| --- | --- | --- |
+| `zero_shot` | 1 | one Gemma call, no retrieval, no planning |
+| `rag_synthesis` | 1 | keyword retrieval over `corpus/` + single synthesis |
+| `planner_verifier` | 3 | planner → hostile verifier → reviser |
+| `agentic_self_critique` | ≤ 9 | retrieve → propose → self-critique loop with a budget |
+
+Code: `baselines/`. CLI: `python -m scripts.run_baseline --baseline <name> …`.
+Every baseline is unit-tested with a mocked Gemma client so the
+reference scores stay reproducible even when the proxy / judge keys
+rotate.

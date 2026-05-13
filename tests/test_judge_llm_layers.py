@@ -73,6 +73,81 @@ def test_judge_b_marks_major_contamination_as_dq(tmp_path: Path):
     assert any("contaminated" in c.reason for c in result.caps)
 
 
+def test_judge_b_strips_conjecture_statement_false_positive(tmp_path: Path):
+    """The public conjecture statement itself must not trigger a DQ.
+
+    Regression for the planner_verifier false positive discovered
+    during the first live baseline scoring run: the LLM saw
+    "Every Kakeya set in R^3 has Minkowski and Hausdorff dimension 3."
+    in the candidate's ``target_theorem`` and flagged it as a leak,
+    citing the post-cutoff paper as evidence — but that sentence has
+    been public since the 1970s.
+    """
+    sub = _write_sub(tmp_path)
+    client = FakeJudgeClient(
+        payload={
+            "post_cutoff_evidence_found": True,
+            "severity": "major",
+            "suspect_passages": [
+                {
+                    "text_span": (
+                        "Every Kakeya set in R^3 has Minkowski and "
+                        "Hausdorff dimension 3."
+                    ),
+                    "reason": "matches a 2025 publication",
+                    "supporting_urls": ["https://arxiv.org/pdf/2502.17655"],
+                }
+            ],
+            "recommended_action": "disqualify",
+            "protocol_subscore": 0,
+        }
+    )
+    result = b_contamination.run(sub, client=client)
+    assert result.post_cutoff_evidence_found is False
+    assert result.severity == "none"
+    assert result.recommended_action == "rank"
+    assert result.suspect_passages == []
+    # No DQ caps after the conjecture-statement filter.
+    assert all(c.cap > 0 for c in result.caps)
+
+
+def test_judge_b_keeps_genuine_post_cutoff_evidence(tmp_path: Path):
+    """When evidence beyond the conjecture statement exists, DQ still fires."""
+    sub = _write_sub(tmp_path)
+    client = FakeJudgeClient(
+        payload={
+            "post_cutoff_evidence_found": True,
+            "severity": "major",
+            "suspect_passages": [
+                {
+                    "text_span": (
+                        "Every Kakeya set in R^3 has Hausdorff dimension 3."
+                    ),
+                    "reason": "conjecture statement (should be ignored)",
+                    "supporting_urls": [],
+                },
+                {
+                    "text_span": (
+                        "Wang and Zahl introduce a convex-set volume estimate"
+                    ),
+                    "reason": "this names the 2025 technique",
+                    "supporting_urls": ["https://arxiv.org/pdf/2502.17655"],
+                },
+            ],
+            "recommended_action": "disqualify",
+            "protocol_subscore": 0,
+        }
+    )
+    result = b_contamination.run(sub, client=client)
+    assert result.post_cutoff_evidence_found is True
+    assert result.severity == "major"
+    # Only the non-conjecture passage survives.
+    assert len(result.suspect_passages) == 1
+    assert "Wang and Zahl" in result.suspect_passages[0]["text_span"]
+    # DQ cap still applied because the proof-technique passage remained.
+    assert any(c.cap == 0.0 for c in result.caps)
+
+
 def test_judge_b_moderate_caps_at_medium(tmp_path: Path):
     sub = _write_sub(tmp_path)
     client = FakeJudgeClient(

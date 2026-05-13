@@ -198,6 +198,29 @@ def test_planner_verifier_survives_invalid_json(tmp_path: Path):
     assert graph["new_lemmas"] == []
 
 
+def test_planner_verifier_parses_latex_escapes_in_json(tmp_path: Path):
+    """Regression: Gemma emits ``\\mathbb{R}^3`` / ``\\delta`` in string
+    values and json.loads rejects the lone backslash. The shared
+    ``extract_object`` helper retries with doubled backslashes so the
+    candidate's new_lemmas survive instead of being silently dropped.
+    """
+    ctx = _ctx(tmp_path)
+    raw = (
+        '{"target_theorem": "Kakeya in $\\mathbb{R}^3$",'
+        ' "new_lemmas": [{"name": "L1",'
+        ' "statement": "$\\delta$-tube volume bound",'
+        ' "proof_status": "sketched",'
+        ' "depends_on": [],'
+        ' "used_for": []}],'
+        ' "final_implication": "dim_H = 3."}'
+    )
+    chat = FakeChat([raw, "critique", raw])
+    planner_verifier.run(ctx, chat=chat)
+    graph = _assert_outputs_valid(ctx)
+    assert graph["new_lemmas"] and graph["new_lemmas"][0]["name"] == "L1"
+    assert "mathbb" in graph["target_theorem"]
+
+
 # ----- agentic_self_critique ------------------------------------------------
 
 

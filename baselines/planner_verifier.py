@@ -17,14 +17,13 @@ survey-only cap, matching the zero-shot baseline's behaviour).
 
 from __future__ import annotations
 
-import json
-import re
 import time
 from typing import Any
 
 from baselines.common.chat import ChatFn, default_chat, extract_text
 from baselines.common.context import BaselineContext, load_task
 from baselines.common.outputs import write_baseline_outputs
+from baselines.common.parse import extract_object
 
 _PLANNER_SYSTEM = (
     "You are a planner agent. Output a structured proof plan for the "
@@ -51,10 +50,6 @@ _FALLBACK_PROMPT = (
     "Make maximal progress on the three-dimensional Kakeya set conjecture. "
     "First produce a structured JSON plan."
 )
-
-_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
-_FIRST_OBJ_RE = re.compile(r"(\{.*\}|\[.*\])", re.DOTALL)
-
 
 def run(ctx: BaselineContext, *, chat: ChatFn | None = None) -> dict[str, Any]:
     task = load_task(ctx.task_path)
@@ -97,7 +92,7 @@ def run(ctx: BaselineContext, *, chat: ChatFn | None = None) -> dict[str, Any]:
         trace=trace,
     )
 
-    plan = _safe_parse_json(revised_text) or _safe_parse_json(plan_text) or {}
+    plan = extract_object(revised_text) or extract_object(plan_text) or {}
     new_lemmas = plan.get("new_lemmas") if isinstance(plan.get("new_lemmas"), list) else []
     new_lemmas = [_normalise_lemma(L) for L in new_lemmas if isinstance(L, dict)]
 
@@ -186,27 +181,6 @@ def _call(
         }
     )
     return text, completion
-
-
-def _safe_parse_json(text: str) -> dict[str, Any] | None:
-    if not text:
-        return None
-    candidates: list[str] = []
-    fence = _JSON_FENCE_RE.search(text)
-    if fence:
-        candidates.append(fence.group(1).strip())
-    candidates.append(text.strip())
-    obj_match = _FIRST_OBJ_RE.search(text)
-    if obj_match:
-        candidates.append(obj_match.group(1).strip())
-    for cand in candidates:
-        try:
-            value = json.loads(cand)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(value, dict):
-            return value
-    return None
 
 
 _VALID_STATUSES = {"proved", "sketched", "conjectural"}

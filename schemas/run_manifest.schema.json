@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dirtycomputer/wanghong_leaderboard/schemas/run_manifest.schema.json",
+  "title": "run_manifest.json",
+  "description": "Per-run metadata written by the participant harness AND validated by the official runner. Provides the reproducibility anchor that the public leaderboard cites.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "harness_name",
+    "harness_version",
+    "track",
+    "model",
+    "corpus_hash",
+    "outputs"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "harness_name": { "type": "string", "minLength": 1 },
+    "harness_version": { "type": "string", "minLength": 1 },
+    "git_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$",
+      "description": "Commit SHA the harness was built from."
+    },
+    "docker_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Immutable Docker image digest. The runner refuses floating tags (latest, main, vN)."
+    },
+    "track": {
+      "type": "string",
+      "enum": [
+        "zero_shot_single_prompt",
+        "literature_retrieval_only",
+        "agentic_research",
+        "structured_proof_search"
+      ]
+    },
+    "model": {
+      "type": "string",
+      "const": "google/gemma-4-31b-it"
+    },
+    "provider_lock": {
+      "type": ["string", "null"],
+      "description": "OpenRouter provider slug if pinned, otherwise null. Recorded for reproducibility."
+    },
+    "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
+    "top_p": { "type": "number", "minimum": 0, "maximum": 1 },
+    "wall_time_seconds": { "type": "number", "minimum": 0 },
+    "num_model_calls": { "type": "integer", "minimum": 0 },
+    "input_tokens_total": { "type": "integer", "minimum": 0 },
+    "output_tokens_total": { "type": "integer", "minimum": 0 },
+    "max_tokens_budget": { "type": "integer", "minimum": 0 },
+    "corpus_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 from corpus/corpus_hash.txt that this run consumed."
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["final_proof", "proof_graph", "cited_sources", "self_critique", "trace"],
+      "properties": {
+        "final_proof": { "type": "string", "const": "final_proof.md" },
+        "proof_graph": { "type": "string", "const": "proof_graph.json" },
+        "cited_sources": { "type": "string", "const": "cited_sources.json" },
+        "self_critique": { "type": "string", "const": "self_critique.md" },
+        "trace": { "type": "string", "const": "trace.jsonl" }
+      }
+    },
+    "evaluation_id": {
+      "type": ["string", "null"],
+      "description": "Filled by the evaluator after scoring. Versions the rubric + judge LLM combination."
+    }
+  }
+}

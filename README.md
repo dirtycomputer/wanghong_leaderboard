@@ -8,7 +8,7 @@ Inspired by Demis Hassabis's "Einstein test" framing — truncate the
 model's knowledge before a major result and check whether the harness
 can re-derive it from first principles + open literature.
 
-## What's in this repository (P1 + P2 slices)
+## What's in this repository (P1 + P2 + P3 slices)
 
 **P1 — proxy + canary** (merged):
 
@@ -21,7 +21,7 @@ can re-derive it from first principles + open literature.
 | `scripts/canary_gemma.py` | Run the contamination canary against `google/gemma-4-31b-it`. |
 | `scripts/canary_prompts.yaml` | Probes + contamination phrase bank for the canary. |
 
-**P2 — time-capsule corpus** (this branch):
+**P2 — time-capsule corpus** (PR #2):
 
 | Path | Purpose |
 | --- | --- |
@@ -33,8 +33,19 @@ can re-derive it from first principles + open literature.
 | `scripts/parse_target_paper.py` | Vault pipeline for `arXiv:2502.17655` → `judge/vault/target_paper/` (never enters public corpus). |
 | `tests/` | Mocked-HTTP tests for arXiv parsing, cutoff enforcement, MinerU zip curation, manifest determinism, vault cross-leak guard. |
 
-Subsequent slices (P3 sandbox runner, P4 judge stack, P5 baselines +
-starter, P6 web UI) build on top of this.
+**P3 — runner + schemas + starter** (this branch):
+
+| Path | Purpose |
+| --- | --- |
+| `schemas/proof_graph.schema.json` | Required structured proof artefact emitted by every harness; judge stack aligns against the hidden gold graph. |
+| `schemas/run_manifest.schema.json` | Per-run metadata: pinned model, immutable docker digest, corpus hash, the five output paths. |
+| `schemas/harness_manifest.schema.json` | What participants put in `harness.yaml`; runner validates before spending a token. |
+| `runner/sandbox.py` | Builds the `docker run` command: `--network kakeya-internal` (no general egress), `--cap-drop ALL`, `--read-only`, pinned resource limits, refuses floating tags (only `name@sha256:…`). |
+| `starter/` | Fork-and-go template: Dockerfile, run.sh, harness.yaml, src/main.py (single-shot baseline), src/model_client.py, src/write_outputs.py, README. |
+| `cli/kakeya_lb/` | Local helper CLI: `kakeya-lb init <dir>`, `kakeya-lb validate`, `kakeya-lb schema-check`. |
+
+Subsequent slices (P4 judge stack, P5 baselines + alpha, P6 public
+leaderboard) build on top of this.
 
 ## Quick start
 
@@ -68,6 +79,11 @@ export $(grep -v '^#' .env | xargs)
 #    NEVER point this script at corpus/papers — its only output is
 #    judge/vault/target_paper/.
 .venv/bin/python -m scripts.parse_target_paper
+
+# 7. Scaffold + validate a new harness locally (P3).
+.venv/bin/kakeya-lb init my-harness
+.venv/bin/kakeya-lb validate my-harness
+.venv/bin/kakeya-lb schema-check my-harness/output  # after a run
 ```
 
 The canary writes a JSON + Markdown report to `reports/canary/`. The
@@ -117,9 +133,9 @@ for reproducibility.
 | Phase | Status | Deliverable |
 | --- | --- | --- |
 | P1 Bootstrap + Safety | merged | proxy + canary + tests |
-| P2 Corpus pipeline | this PR | arXiv harvester (`submittedDate < 2025-01-01 GMT`) + MinerU v4 parse + `manifest.jsonl` + `corpus_hash` + vault pipeline for target paper |
-| P3 Sandbox runner | next | Docker network isolation, output schemas, starter repo |
-| P4 Judge stack | | 5-layer judges (protocol / contamination / gold-graph / adversarial / novelty); LLM-only gold graph for MVP |
+| P2 Corpus pipeline | PR #2 | arXiv harvester (`submittedDate < 2025-01-01 GMT`) + MinerU v4 parse + `manifest.jsonl` + `corpus_hash` + vault pipeline for target paper |
+| P3 Runner + schemas + starter | this PR | Docker sandbox runner (`--network kakeya-internal`, immutable digest only), JSON schemas, fork-and-go starter, `kakeya-lb` CLI |
+| P4 Judge stack | next | 5-layer judges (protocol / contamination / gold-graph / adversarial / novelty); LLM-only gold graph for MVP |
 | P5 Baselines + alpha | | 4 baseline harnesses, public rules, evaluator versioning |
 | P6 Public leaderboard | | Web UI, anti-cheat dashboard, historical scores |
 

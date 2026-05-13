@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dirtycomputer/wanghong_leaderboard/schemas/proof_graph.schema.json",
+  "title": "proof_graph.json",
+  "description": "Structured proof artefact a participant harness must produce alongside final_proof.md. The judge stack uses this to align against the hidden gold proof graph held in judge/vault/.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "target_theorem",
+    "definitions",
+    "pre_cutoff_dependencies",
+    "new_lemmas",
+    "known_gaps",
+    "final_implication"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version. Pinned so judges can branch on layout changes."
+    },
+    "target_theorem": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The harness's own statement of what it is trying to prove. Free-form mathematical English. Must reference dimension 3 and the Kakeya / Besicovitch set conjecture."
+    },
+    "definitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "statement"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "statement": { "type": "string", "minLength": 1 }
+        }
+      },
+      "description": "Definitions the proof relies on (e.g. δ-tube, broad tube family, Frostman measure)."
+    },
+    "pre_cutoff_dependencies": {
+      "type": "array",
+      "description": "Every external mathematical fact used in the proof, citing its source. Sources MUST be in the time-capsule corpus.",
+      "items": {
+        "type": "object",
+        "required": ["arxiv_id", "claim"],
+        "additionalProperties": false,
+        "properties": {
+          "arxiv_id": {
+            "type": "string",
+            "pattern": "^[0-9]{4}\\.[0-9]{4,5}(v[0-9]+)?$",
+            "description": "arXiv id of a corpus paper; e.g. 1909.10973v3."
+          },
+          "claim": { "type": "string", "minLength": 1 },
+          "where_used": { "type": "string" }
+        }
+      }
+    },
+    "new_lemmas": {
+      "type": "array",
+      "description": "Lemmas / propositions the harness introduces. The judge stack compares this list against the hidden gold proof graph.",
+      "items": {
+        "type": "object",
+        "required": ["name", "statement", "proof_status", "depends_on", "used_for"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "statement": { "type": "string", "minLength": 1 },
+          "proof_status": {
+            "type": "string",
+            "enum": ["proved", "sketched", "conjectural"]
+          },
+          "proof_pointer": {
+            "type": "string",
+            "description": "Section or line range in final_proof.md where the lemma is proved."
+          },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Names of other definitions / lemmas / corpus citations."
+          },
+          "used_for": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Names of downstream lemmas or the final implication consuming this lemma."
+          }
+        }
+      }
+    },
+    "known_gaps": {
+      "type": "array",
+      "description": "Self-reported gaps. Reporting gaps is rewarded by the rubric; hiding them is penalised when the adversarial judge finds them.",
+      "items": {
+        "type": "object",
+        "required": ["location", "description", "severity"],
+        "additionalProperties": false,
+        "properties": {
+          "location": { "type": "string" },
+          "description": { "type": "string" },
+          "severity": {
+            "type": "string",
+            "enum": ["minor", "moderate", "fatal"]
+          }
+        }
+      }
+    },
+    "final_implication": {
+      "type": "string",
+      "minLength": 1,
+      "description": "How the lemma chain implies Minkowski and Hausdorff dimension 3 for every Kakeya set in R^3."
+    }
+  }
+}

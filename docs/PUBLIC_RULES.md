@@ -30,6 +30,33 @@ including `arXiv:2502.17655`, is marked contaminated or disqualified.
   in turn refuses to run if the target id ever appears in the public
   manifest.
 
+## Submission format
+
+- Submit one of:
+  1. **GitHub repo URL + commit SHA** (recommended).
+  2. **Immutable Docker image** referenced as `name@sha256:<digest>`.
+     Floating tags (`latest`, `main`, version aliases) are rejected.
+  3. **Local bundle** produced by `kakeya-lb bundle` (later phase).
+- Every submission must include a `harness.yaml` validating against
+  `schemas/harness_manifest.schema.json` and an executable `./run.sh`.
+- The run output directory must contain exactly five files:
+  `final_proof.md`, `proof_graph.json`, `cited_sources.json`,
+  `self_critique.md`, `trace.jsonl`. The `proof_graph.json` must
+  validate against `schemas/proof_graph.schema.json`.
+
+## Runtime sandbox
+
+- Containers run on a custom Docker network named `kakeya-internal`
+  with `--internal` (no external egress; only the leaderboard proxy is
+  reachable).
+- `--cap-drop ALL`, `--security-opt no-new-privileges`, `--read-only`
+  root filesystem, `--tmpfs /tmp`, `--pids-limit 4096`,
+  `--ulimit nofile=4096:4096`.
+- CPU / memory / wall-time / model-call budgets are enforced from
+  `harness.yaml` and capped by the runner's own ceilings.
+- The container is given only an **ephemeral run token**; it never
+  sees `OPENROUTER_KEY`, `OPENROUTER_JUDGE_KEY`, or `MINERU_KEY`.
+
 ## Generation policy (participant side)
 
 - Model is pinned to `google/gemma-4-31b-it` via the official proxy.

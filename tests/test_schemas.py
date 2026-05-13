@@ -129,6 +129,28 @@ def test_proof_graph_rejects_invalid_proof_status(proof_graph):
     assert any("proof_status" in e for e in errors)
 
 
+def test_proof_graph_accepts_pre_2007_arxiv_id(proof_graph):
+    """Old-format IDs like 0010069 (Katz 2000) must validate.
+
+    The harvester strips the subject prefix from pre-2007 papers so the
+    canonical short form is 7 digits, optionally with a version.
+    """
+    bad = copy.deepcopy(proof_graph)
+    for cand in ("0010069", "0010069v2", "9807163", "9807163v1"):
+        bad["pre_cutoff_dependencies"][0]["arxiv_id"] = cand
+        errors = validate_against(bad, PROOF_GRAPH_SCHEMA_PATH)
+        assert errors == [], f"{cand} unexpectedly rejected: {errors}"
+
+
+def test_proof_graph_accepts_pre_2007_with_subject_prefix(proof_graph):
+    """``math.CA/0010069`` (subject-prefixed) must also validate."""
+    bad = copy.deepcopy(proof_graph)
+    for cand in ("math.CA/0010069", "math/0010069", "astro-ph/0010069v1"):
+        bad["pre_cutoff_dependencies"][0]["arxiv_id"] = cand
+        errors = validate_against(bad, PROOF_GRAPH_SCHEMA_PATH)
+        assert errors == [], f"{cand} unexpectedly rejected: {errors}"
+
+
 def test_proof_graph_rejects_bad_arxiv_id(proof_graph):
     bad = copy.deepcopy(proof_graph)
     bad["pre_cutoff_dependencies"][0]["arxiv_id"] = "not-an-id"

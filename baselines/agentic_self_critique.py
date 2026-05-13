@@ -12,7 +12,6 @@ total tokens recorded in ``trace.jsonl``.
 
 from __future__ import annotations
 
-import json
 import re
 import time
 from typing import Any
@@ -24,6 +23,7 @@ from baselines.common.corpus import (
     retrieve_relevant_papers,
 )
 from baselines.common.outputs import write_baseline_outputs
+from baselines.common.parse import extract_object
 
 _AGENT_SYSTEM = (
     "You are a mathematical research agent operating with knowledge "
@@ -54,9 +54,6 @@ _FALLBACK_PROMPT = (
     "Make maximal progress on the three-dimensional Kakeya set "
     "conjecture using only the provided pre-cutoff corpus."
 )
-
-_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
-_FIRST_OBJ_RE = re.compile(r"(\{.*\}|\[.*\])", re.DOTALL)
 
 _VALID_STATUSES = {"proved", "sketched", "conjectural"}
 _VALID_SEVERITY = {"minor", "moderate", "fatal"}
@@ -118,7 +115,7 @@ def run(
             purpose=f"iteration_{i}_critique",
             trace=trace,
         )
-        critic = _safe_parse_json(critic_text) or {}
+        critic = extract_object(critic_text) or {}
         verdict = str(critic.get("verdict") or "continue").lower()
         running_notes.append(f"Critic ({verdict}): {critic.get('weakness') or ''}")
         if verdict == "stop":
@@ -133,7 +130,7 @@ def run(
         trace=trace,
     )
 
-    graph_raw = _safe_parse_json(summary_text) or {}
+    graph_raw = extract_object(summary_text) or {}
     proof_graph = _normalise_graph(graph_raw, citations_seen)
 
     final_proof_md = (
@@ -208,27 +205,6 @@ def _call(
         }
     )
     return text, completion
-
-
-def _safe_parse_json(text: str) -> dict[str, Any] | None:
-    if not text:
-        return None
-    candidates: list[str] = []
-    fence = _JSON_FENCE_RE.search(text)
-    if fence:
-        candidates.append(fence.group(1).strip())
-    candidates.append(text.strip())
-    obj_match = _FIRST_OBJ_RE.search(text)
-    if obj_match:
-        candidates.append(obj_match.group(1).strip())
-    for cand in candidates:
-        try:
-            value = json.loads(cand)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(value, dict):
-            return value
-    return None
 
 
 def _normalise_graph(

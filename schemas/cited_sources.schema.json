@@ -11,7 +11,8 @@
     "properties": {
       "arxiv_id": {
         "type": "string",
-        "pattern": "^[0-9]{4}\\.[0-9]{4,5}(v[0-9]+)?$"
+        "pattern": "^(?:[a-z\\-]+(?:\\.[A-Z]{2})?/)?(?:[0-9]{4}\\.[0-9]{4,5}|[0-9]{7})(?:v[0-9]+)?$",
+        "description": "Either new-format YYMM.NNNNN (post April 2007) or pre-2007 7-digit short form. Optional subject prefix (e.g. math.CA/) is accepted but not required; arXiv API responses for pre-2007 papers already drop it. Optional version suffix vN at the end."
       },
       "claim": { "type": "string", "minLength": 1 },
       "where_used": { "type": "string" }

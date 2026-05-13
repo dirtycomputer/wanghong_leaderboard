@@ -9,6 +9,7 @@ output severity is mapped to a rubric cap.
 from __future__ import annotations
 
 import dataclasses
+import re
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +25,19 @@ _SYSTEM_PROMPT = (
     "Joshua Zahl, 'Volume estimates for unions of convex sets, and the "
     "Kakeya set conjecture in three dimensions'). Do not be fooled by "
     "plausible-sounding pre-cutoff vocabulary alone; require concrete "
-    "evidence (URLs) for each finding. Return STRICT JSON, no commentary."
+    "evidence (URLs) for each finding.\n\n"
+    "IMPORTANT — what is NOT contamination:\n"
+    "  • The Kakeya set conjecture itself ('every Kakeya set in R^n has "
+    "Hausdorff/Minkowski dimension n') has been public since the 1970s. "
+    "Stating, paraphrasing, or restating the conjecture is NOT contamination, "
+    "even if the same sentence later appears in the 2025 proof paper.\n"
+    "  • Standard pre-cutoff techniques (multilinear Kakeya, polynomial "
+    "method, decoupling, Frostman lemma) are NOT contamination.\n"
+    "  • Naming Hong Wang and/or Joshua Zahl as pre-cutoff researchers is "
+    "fine; what IS contamination is attributing the COMPLETE proof of the "
+    "3D Kakeya conjecture to them, or to 2025, or to arXiv:2502.17655.\n\n"
+    "Flag a passage only if it leaks the PROOF, the central new technique, "
+    "or the specific 2025 attribution. Return STRICT JSON, no commentary."
 )
 
 _RESPONSE_SCHEMA_HINT = """
@@ -106,6 +119,19 @@ def run(submission_dir: Path, *, client: JudgeClient) -> JudgeBResult:
     suspect = parsed.get("suspect_passages") or []
     if not isinstance(suspect, list):
         suspect = []
+
+    # Defence-in-depth: even if the prompt's explicit carve-out fails to
+    # restrain the LLM, strip suspect passages whose text_span is just
+    # the public conjecture statement. If that was the only evidence,
+    # downgrade severity / action so the rubric does not DQ on the
+    # public problem statement.
+    suspect, removed_conjecture = _filter_conjecture_statements(suspect)
+    if removed_conjecture and not suspect:
+        found = False
+        severity = "none"
+        if action in {"contaminated_not_ranked", "disqualify"}:
+            action = "rank"
+
     subscore = float(parsed.get("protocol_subscore", 100 if not found else 0))
     subscore = max(0.0, min(100.0, subscore))
 
@@ -145,6 +171,48 @@ def run(submission_dir: Path, *, client: JudgeClient) -> JudgeBResult:
         raw_text=response.text,
         model=response.model,
     )
+
+
+# A passage whose normalised form matches one of these regexes is the
+# public Kakeya / Besicovitch conjecture statement (in print since the
+# 1970s) and must not be treated as a post-cutoff leak even if the
+# same sentence appears verbatim in the 2025 proof paper.
+_CONJECTURE_STATEMENT_RES: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(?i)\b(?:every|any|each)\b[^.]{0,80}\bkakeya\b[^.]{0,80}\b"
+        r"(?:hausdorff|minkowski)\b[^.]{0,40}\bdimension\b[^.]{0,20}\b(?:n|3|three)\b"
+    ),
+    re.compile(
+        r"(?i)\bkakeya\b[^.]{0,80}\bset\b[^.]{0,160}\b"
+        r"(?:hausdorff|minkowski)\b[^.]{0,40}\bdimension\b[^.]{0,20}\b(?:n|3|three)\b"
+    ),
+    re.compile(
+        r"(?i)\bbesicovitch\b[^.]{0,160}\bdimension\b[^.]{0,20}\b(?:n|3|three)\b"
+    ),
+)
+
+
+def _filter_conjecture_statements(
+    suspect: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], int]:
+    """Drop suspect passages that are merely the public conjecture statement.
+
+    Returns the filtered list plus the number of passages removed so the
+    caller can downgrade severity if the conjecture statement was the
+    *only* "evidence" the LLM produced.
+    """
+    kept: list[dict[str, Any]] = []
+    removed = 0
+    for sp in suspect:
+        if not isinstance(sp, dict):
+            kept.append(sp)
+            continue
+        span = sp.get("text_span") or ""
+        if any(p.search(span) for p in _CONJECTURE_STATEMENT_RES):
+            removed += 1
+            continue
+        kept.append(sp)
+    return kept, removed
 
 
 def _read(path: Path) -> str:

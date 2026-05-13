@@ -1,0 +1,89 @@
+# Contamination canary prompts.
+#
+# Each prompt probes whether ``google/gemma-4-31b-it`` has leaked
+# knowledge about the target paper (arXiv:2502.17655, submitted
+# 2025-02-24) into its post-training. Prompts are intentionally varied
+# so that simple keyword fine-tunes do not all align.
+#
+# ``patterns`` are scored against the model response. Severities map to
+# ``proxy.contamination_score`` weights in scripts/canary_gemma.py:
+#   fatal    -> +100  (single match is enough to flag the model)
+#   severe   -> +50
+#   moderate -> +25
+#   weak     -> +10
+#
+# A prompt is "leaked" when its severity-weighted match sum >= 25.
+# A model is flagged "contaminated" when total contamination >= 70.
+
+prompts:
+  - id: arxiv_id_probe
+    role_system: "You are a helpful research assistant. Answer concisely."
+    role_user: "What is arXiv:2502.17655? Give title, authors, and the main theorem."
+    rationale: "Direct identifier probe; any non-refusal answer is leakage."
+
+  - id: completion_probe
+    role_system: "You are a helpful research assistant. Answer concisely."
+    role_user: "Has the three-dimensional Kakeya set conjecture been fully resolved? If yes, by whom and when, and what was the central new idea?"
+    rationale: "Asks whether the conjecture is *completed*; pre-cutoff knowledge can only say 'open' or 'partial progress'."
+
+  - id: title_probe
+    role_system: "You are a helpful research assistant. Answer concisely."
+    role_user: "Summarize the paper titled 'Volume estimates for unions of convex sets, and the Kakeya set conjecture in three dimensions'. Who wrote it and what does it prove?"
+    rationale: "Verbatim title probe; pre-cutoff models should not recognise it."
+
+  - id: technique_probe
+    role_system: "You are a research mathematician. Be precise."
+    role_user: "In the 2025 proof of the three-dimensional Kakeya conjecture, what is the key new convex-set volume estimate, and how is the Hausdorff dimension upgrade obtained?"
+    rationale: "Asks for the *central new ingredient* of the target paper."
+
+  - id: author_probe
+    role_system: "You are a research mathematician. Be precise."
+    role_user: "What did Hong Wang and Joshua Zahl prove together in 2025 about Kakeya sets?"
+    rationale: "Names + year + topic = strong contamination signal if answered substantively."
+
+  - id: knowledge_cutoff_probe
+    role_system: "You are a careful research assistant. State your knowledge cutoff."
+    role_user: "As of your knowledge cutoff, what is the best known lower bound on the Hausdorff dimension of a Kakeya set in R^3? Cite papers."
+    rationale: "Honest answer should reference pre-2025 partial results, not the full d=3 resolution."
+
+  - id: negative_control_2d
+    role_system: "You are a research mathematician. Be precise."
+    role_user: "Who first proved that every Kakeya set in R^2 has Hausdorff dimension 2, and when?"
+    rationale: "Negative control: well-known pre-cutoff fact (Davies, 1971). The model should answer correctly. Use this to confirm the model *can* speak about Kakeya without being contaminated."
+
+contamination_patterns:
+  - pattern: "\\b2502\\.17655\\b"
+    severity: fatal
+    description: "Direct arXiv ID of the target paper."
+
+  - pattern: "(?i)volume estimates?\\s+for\\s+unions?\\s+of\\s+convex\\s+sets"
+    severity: fatal
+    description: "Verbatim paper title fragment."
+
+  - pattern: "(?i)\\bWang[\\-\\u2013]Zahl\\b"
+    severity: severe
+    description: "Hyphenated attribution 'Wang-Zahl' — distinctive of the 2025 result."
+
+  - pattern: "(?i)\\bWang\\s+(?:and|&|,)\\s+Zahl\\b"
+    severity: moderate
+    description: "'Wang and Zahl' / 'Wang & Zahl' without first names — suspicious when paired with 2025 / Kakeya context."
+
+  - pattern: "(?i)Hong\\s+Wang.{0,80}(2025|February\\s+2025).{0,80}(Kakeya|three[- ]dimensional)"
+    severity: severe
+    description: "Hong Wang + 2025 + Kakeya/3D within a short span."
+
+  - pattern: "(?i)Joshua\\s+Zahl.{0,80}(2025|February\\s+2025).{0,80}Kakeya"
+    severity: severe
+    description: "Joshua Zahl + 2025 + Kakeya within a short span."
+
+  - pattern: "(?i)Kakeya.{0,80}(proved|resolved|settled|completed).{0,80}(2025|February\\s+2025)"
+    severity: severe
+    description: "Claim that the Kakeya conjecture was resolved in 2025."
+
+  - pattern: "(?i)three[- ]dimensional\\s+Kakeya.{0,120}Hausdorff\\s+dimension\\s+3"
+    severity: moderate
+    description: "Connects 3D Kakeya to the dim=3 conclusion (well-known *conjecture*; severe only when paired with a 2025 attribution, scored separately)."
+
+  - pattern: "(?i)\\bin\\s+February\\s+2025\\b.{0,200}Kakeya"
+    severity: severe
+    description: "Explicit Feb 2025 + Kakeya."

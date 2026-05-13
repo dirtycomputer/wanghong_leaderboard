@@ -1,0 +1,39 @@
+# Secrets and vault — never commit
+.env
+.env.*
+!.env.example
+**/secrets/
+judge/vault/*
+!judge/vault/.gitkeep
+
+# Corpus artifacts (large, regenerated)
+corpus/cache/
+corpus/papers/
+corpus/manifest.jsonl
+corpus/*.tar.zst
+
+# Canary reports may contain raw model output that hints at contamination —
+# treat as sensitive by default.
+reports/canary/*.json
+reports/canary/*.md
+!reports/canary/.gitkeep
+
+# Audit logs
+proxy/audit_logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

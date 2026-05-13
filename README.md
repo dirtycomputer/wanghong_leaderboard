@@ -8,9 +8,9 @@ Inspired by Demis Hassabis's "Einstein test" framing — truncate the
 model's knowledge before a major result and check whether the harness
 can re-derive it from first principles + open literature.
 
-## What's in this repository (P1 slice)
+## What's in this repository (P1 + P2 slices)
 
-This branch lands the bootstrap + safety slice:
+**P1 — proxy + canary** (merged):
 
 | Path | Purpose |
 | --- | --- |
@@ -20,11 +20,21 @@ This branch lands the bootstrap + safety slice:
 | `proxy/audit_log.py` | Append-only JSONL audit log of every request/response/violation. |
 | `scripts/canary_gemma.py` | Run the contamination canary against `google/gemma-4-31b-it`. |
 | `scripts/canary_prompts.yaml` | Probes + contamination phrase bank for the canary. |
-| `tests/` | Unit tests for the policy and the canary scoring. |
 
-Subsequent slices (P2 corpus, P3 sandbox runner, P4 judge stack,
-P5 baselines + starter, P6 web UI) live behind this one and are
-unblocked once the canary verdict is `CLEAN`.
+**P2 — time-capsule corpus** (this branch):
+
+| Path | Purpose |
+| --- | --- |
+| `corpus/seed_keywords.yaml` | Public arXiv search seeds + cutoff + blocklist (target paper id). |
+| `corpus/harvest_arxiv.py` | Atom-feed paginator with strict `submittedDate < 2025-01-01 GMT` filter and per-PDF SHA-256. |
+| `corpus/mineru_parse.py` | MinerU v4 batch URL client (model_version=`vlm`); curates `full.md` / `images/` / `content_list.json`. |
+| `corpus/manifest.py` | Deterministic `manifest.jsonl` + `corpus_hash` (SHA-256 of canonical sorted entries). |
+| `scripts/build_corpus.py` | Orchestrator: seeds → harvest → MinerU → manifest. |
+| `scripts/parse_target_paper.py` | Vault pipeline for `arXiv:2502.17655` → `judge/vault/target_paper/` (never enters public corpus). |
+| `tests/` | Mocked-HTTP tests for arXiv parsing, cutoff enforcement, MinerU zip curation, manifest determinism, vault cross-leak guard. |
+
+Subsequent slices (P3 sandbox runner, P4 judge stack, P5 baselines +
+starter, P6 web UI) build on top of this.
 
 ## Quick start
 
@@ -45,6 +55,19 @@ export $(grep -v '^#' .env | xargs)
 
 # 4. (Optional) bring up the proxy locally
 .venv/bin/uvicorn proxy.main:app --host 0.0.0.0 --port 8080
+
+# 5. Build the time-capsule corpus (P2). Requires MINERU_KEY in the env.
+#    The orchestrator obeys the seed-file cutoff and blocklist, and
+#    refuses to relax them.
+.venv/bin/python -m scripts.build_corpus \
+    --seeds corpus/seed_keywords.yaml \
+    --out corpus/papers \
+    --manifest-dir corpus
+
+# 6. Parse the *target* paper into the private judge vault.
+#    NEVER point this script at corpus/papers — its only output is
+#    judge/vault/target_paper/.
+.venv/bin/python -m scripts.parse_target_paper
 ```
 
 The canary writes a JSON + Markdown report to `reports/canary/`. The
@@ -93,9 +116,9 @@ for reproducibility.
 
 | Phase | Status | Deliverable |
 | --- | --- | --- |
-| P1 Bootstrap + Safety | this PR | proxy + canary + tests |
-| P2 Corpus pipeline | next | arXiv harvester (`submittedDate < 2025-01-01 GMT`) + MinerU v4 parse + `corpus_hash` |
-| P3 Sandbox runner | | Docker network isolation, output schemas, starter repo |
+| P1 Bootstrap + Safety | merged | proxy + canary + tests |
+| P2 Corpus pipeline | this PR | arXiv harvester (`submittedDate < 2025-01-01 GMT`) + MinerU v4 parse + `manifest.jsonl` + `corpus_hash` + vault pipeline for target paper |
+| P3 Sandbox runner | next | Docker network isolation, output schemas, starter repo |
 | P4 Judge stack | | 5-layer judges (protocol / contamination / gold-graph / adversarial / novelty); LLM-only gold graph for MVP |
 | P5 Baselines + alpha | | 4 baseline harnesses, public rules, evaluator versioning |
 | P6 Public leaderboard | | Web UI, anti-cheat dashboard, historical scores |

@@ -13,6 +13,23 @@ solution to — or maximal progress on — the **three-dimensional Kakeya
 set conjecture**. Any use or apparent recall of post-cutoff sources,
 including `arXiv:2502.17655`, is marked contaminated or disqualified.
 
+## Corpus policy
+
+- Public corpus is built only from arXiv records with
+  `submittedDate < 2025-01-01 00:00:00 GMT`.
+- Each paper PDF is parsed by MinerU v4 (`model_version: "vlm"`); the
+  resulting `full.md`, `images/`, and `content_list.json` are the only
+  representation participants see.
+- `corpus_hash` is the SHA-256 of the canonical, sorted manifest. The
+  hash is part of every run's recorded metadata so submissions made
+  against different corpus snapshots remain distinguishable on the
+  leaderboard.
+- The target paper `arXiv:2502.17655` is held only in the private judge
+  vault. The corpus orchestrator's blocklist + the manifest builder's
+  defence-in-depth check both refuse to add it; `scripts/parse_target_paper.py`
+  in turn refuses to run if the target id ever appears in the public
+  manifest.
+
 ## Generation policy (participant side)
 
 - Model is pinned to `google/gemma-4-31b-it` via the official proxy.

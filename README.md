@@ -59,7 +59,7 @@ can re-derive it from first principles + open literature.
 | `scripts/build_gold_graph.py` | LLM-only MVP extractor: `judge/vault/target_paper/full.md` → `judge/vault/gold_graph.json` (validated against `proof_graph.schema.json`). Hand-review before public beta. |
 | `scripts/judge_submission.py` | End-to-end CLI: `python -m scripts.judge_submission --submission <dir> --gold-graph judge/vault/gold_graph.json`. |
 
-**P5 — reference baselines + alpha rules** (this branch):
+**P5 — reference baselines + alpha rules** (merged):
 
 | Path | Purpose |
 | --- | --- |
@@ -72,7 +72,21 @@ can re-derive it from first principles + open literature.
 | `docs/PUBLIC_RULES.md` | Alpha-ready rules: corpus / runtime / generation / evaluation policies, hard caps, scoring axes, eval versioning, reference baselines. |
 | `docs/EVAL_VERSIONING.md` | Lifecycle for the four version axes (corpus / gold-graph / rubric / judge models) and how the leaderboard preserves historical scores. |
 
-Subsequent slices (P6 public leaderboard web UI) build on top of this.
+**P6 — public leaderboard static site** (this branch):
+
+| Path | Purpose |
+| --- | --- |
+| `leaderboard/aggregate.py` | Recursively loads `evaluation_report.json` files, dedupes by `(harness, version, evaluation_id)`, groups into `HarnessHistory` (newest first), surfaces every contamination / DQ event ever recorded. Falls back to the submission directory name when a report omits `harness_name`. |
+| `leaderboard/render.py` | Pure f-string renderer (no jinja, no JS) emitting `index.html` (sorted scores + anti-cheat events) + `submissions/<slug>.html` (per-axis bars + applied caps + judge model record + historical evaluations) + `static/style.css`. Wipes stale `submissions/` on rebuild. |
+| `leaderboard/static/style.css` | Vendored stylesheet (light theme, verdict-pill chips, axis bars). |
+| `scripts/build_leaderboard.py` | CLI: `python -m scripts.build_leaderboard --reports submissions/ --out site/`. |
+
+The output is hostable on any static file server (GitHub Pages, S3,
+etc.) and is reproducible byte-for-byte given the same input
+directory + `--generated-at` (the renderer factors this in so CI can
+pin it).
+
+This completes the v0.1 leaderboard stack.
 
 ## Quick start
 
@@ -120,6 +134,13 @@ export $(grep -v '^#' .env | xargs)
     --submission runs/example/output \
     --corpus-manifest corpus/manifest.jsonl \
     --gold-graph judge/vault/gold_graph.json
+
+# 10. Build the public leaderboard site (P6).
+#     Reads every evaluation_report.json under --reports and writes a
+#     JS-free static site under --out (hostable on GitHub Pages, S3, …).
+.venv/bin/python -m scripts.build_leaderboard \
+    --reports submissions/ \
+    --out site/
 ```
 
 The canary writes a JSON + Markdown report to `reports/canary/`. The
@@ -173,7 +194,7 @@ for reproducibility.
 | P3 Runner + schemas + starter | merged | Docker sandbox runner (`--network kakeya-internal`, immutable digest only), JSON schemas, fork-and-go starter, `kakeya-lb` CLI |
 | P4 Judge stack | PR #4 | 5-layer judges (protocol / contamination / gold-graph / adversarial / novelty); LLM-only gold graph for MVP; rubric + caps; evaluation_report schema |
 | P5 Baselines + alpha | this PR | 4 reference baselines + `run_baseline` CLI + alpha public rules + evaluator versioning doc |
-| P6 Public leaderboard | next | Web UI, anti-cheat dashboard, historical scores |
+| P6 Public leaderboard | this PR | Static-site generator (`leaderboard/`) — index + per-submission detail + anti-cheat events; reproducible byte-for-byte |
 
 See `docs/PUBLIC_RULES.md` and `docs/EVAL_VERSIONING.md` for the full
 plan.

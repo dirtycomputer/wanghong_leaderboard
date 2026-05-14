@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.0",
+  "evaluation_id": "eval-20260514T085650Z",
+  "rubric_version": "kakeya3d-rubric-v0.1",
+  "gold_graph_hash": "77dd1e7cacbe2f0aaea9914e2b4e411a4e45b0480240ca8fd3c34087f4d9af10",
+  "target_paper_parse_hash": null,
+  "submission": {
+    "harness_name": null,
+    "harness_version": null,
+    "corpus_hash": null,
+    "path": "/tmp/wh_bench2/rag_synthesis"
+  },
+  "judges": {
+    "A": {
+      "passed": true,
+      "disqualifying_issues": [],
+      "warnings": [],
+      "leak_evidence_count": 0,
+      "citations_outside_corpus": [],
+      "files_present": [
+        "final_proof.md",
+        "proof_graph.json",
+        "cited_sources.json",
+        "self_critique.md",
+        "trace.jsonl"
+      ],
+      "files_missing": [],
+      "subscores": {
+        "protocol": 100.0,
+        "clarity": 100.0
+      },
+      "caps": [
+        {
+          "reason": "survey only — no new_lemmas in proof_graph.json",
+          "cap": 45.0,
+          "source": "judge_a_protocol"
+        }
+      ]
+    },
+    "B": {
+      "post_cutoff_evidence_found": false,
+      "severity": "none",
+      "recommended_action": "rank",
+      "protocol_subscore": 100.0,
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "C": {
+      "target_theorem_match": 100.0,
+      "core_mechanism_match": 0.0,
+      "lemma_chain_match": 0.0,
+      "final_implication_match": 0.0,
+      "possible_equivalent_new_route": false,
+      "overall_subscore": 15.0,
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "D": {
+      "fatal_gap_found": true,
+      "first_fatal_gap": {
+        "location": "Section 2A, Multilinear Extension bullet",
+        "description": "The text proposes that one 'attempt to bridge the gap between the multilinear result and the linear conjecture' but supplies no quantitative argument to effect this bridge. There are no polynomial degree estimates, no transversality quantifiers, no epsilon/delta scale dependencies, no $C_\\epsilon \\delta^{-\\epsilon}$ bookkeeping, and no analysis of non-transverse or exceptional tube configurations. This is the first point where the document substitutes a proof idea for an actual deductive step, breaking the chain before any implication toward dimension 3 is established.",
+        "severity": "fatal"
+      },
+      "correctness_subscore": 0.0,
+      "gap_resistance_subscore": 0.0,
+      "notes": "The submission is a strategy outline and literature survey, not a proof. It contains no lemmas, no quantitative estimates, no quantifier-laden arguments, and no handling of exceptional configurations. The proof_graph.json explicitly records that the final implication is 'Not derived' and that the baseline 'reuses retrieved excerpts without introducing new lemmas or proof structure'.",
+      "caps": [
+        {
+          "reason": "fatal mathematical gap identified by judge D",
+          "cap": 70.0,
+          "source": "judge_d_adversarial"
+        }
+      ],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "E": {
+      "classification": "known",
+      "novelty_subscore": 5.0,
+      "evidence": [
+        {
+          "description": "The submission’s three pillars—polynomial methods, additive combinatorics, and maximal function bounds—are already well-documented public approaches to Kakeya problems.",
+          "url": "https://arxiv.org/abs/math/0102135"
+        },
+        {
+          "description": "The Kakeya set conjecture in ℝ³ has been proved in the literature via sticky reductions and tube estimates; the submission neither engages with nor advances beyond this result.",
+          "url": "https://arxiv.org/html/2601.14411v1"
+        },
+        {
+          "description": "Guth’s degree-reduction and graininess estimates for Kakeya-type sets in ℝ³ form part of the established polynomial-method lineage cited by the submission.",
+          "url": "https://ems.press/journals/rmi/articles/13911"
+        },
+        {
+          "description": "Katz–Laba–Tao (2000) provided classical Minkowski-dimension bounds for Besicovitch sets in ℝ³, representing the analytic framework the submission restates.",
+          "url": "https://amathe.web.elte.hu/modern/minkowskibesicovitch.pdf"
+        }
+      ],
+      "notes": "The submission is a high-level restatement of existing public strategies. Its own proof_graph.json concedes it introduces no new lemmas, proof structure, or derivation, and merely reorganizes retrieved excerpts. It therefore does not constitute a novel route.",
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    }
+  },
+  "subscores": {
+    "protocol": 100.0,
+    "gold_graph": 15.0,
+    "correctness": 0.0,
+    "gap_resistance": 0.0,
+    "novelty": 5.0,
+    "clarity": 100.0
+  },
+  "weighted_score": 29.25,
+  "applied_caps": [],
+  "final_score": 29.25,
+  "verdict": "FLAGGED",
+  "judge_models": [
+    {
+      "role": "A_protocol",
+      "model": "(pure-program)",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "B_contamination",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": true,
+      "provider": null
+    },
+    {
+      "role": "C_gold_graph",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "D_adversarial",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "E_novelty",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": true,
+      "provider": null
+    }
+  ]
+}

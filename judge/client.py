@@ -24,7 +24,19 @@ from tenacity import (
 )
 
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
-_DEFAULT_TIMEOUT = httpx.Timeout(connect=10.0, read=240.0, write=30.0, pool=10.0)
+# Reasoning judge models (Kimi K2.6, etc.) can spend 10k+ tokens on the
+# thinking block before emitting any content, and large generations take
+# a while — give the read timeout generous headroom.
+_DEFAULT_TIMEOUT = httpx.Timeout(connect=10.0, read=600.0, write=30.0, pool=10.0)
+
+#: Default completion budget for judge calls. Sized for *reasoning*
+#: models: Kimi K2.6 burns ~14k tokens on the thinking block for the
+#: gold-graph / adversarial prompts, then needs ~1-2k more for the JSON
+#: answer. Non-reasoning models simply never use the headroom (you only
+#: pay for tokens actually generated). OpenRouter's ``reasoning`` cap is
+#: not honoured by every provider, so a generous ``max_tokens`` is the
+#: portable lever.
+DEFAULT_JUDGE_MAX_TOKENS = 24000
 
 
 class JudgeError(RuntimeError):
@@ -63,6 +75,9 @@ class JudgeClient:
         When ``True``, attach the OpenRouter web plugin so the model
         may issue web search calls during reasoning. Only judges B and
         E should set this.
+    transport:
+        Optional ``httpx`` transport. Tests inject ``httpx.MockTransport``
+        here so :meth:`chat` can be exercised without live traffic.
     """
 
     def __init__(
@@ -74,6 +89,7 @@ class JudgeClient:
         web_enabled: bool = False,
         referer: str = "https://github.com/dirtycomputer/wanghong_leaderboard",
         app_title: str = "wanghong-leaderboard-judge",
+        transport: httpx.BaseTransport | None = None,
     ) -> None:
         if not api_key:
             raise ValueError("judge api_key is required")
@@ -81,6 +97,7 @@ class JudgeClient:
         self._model = model
         self._base = base_url.rstrip("/")
         self._web_enabled = web_enabled
+        self._transport = transport
         self._headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -127,7 +144,7 @@ class JudgeClient:
         messages: list[dict[str, Any]],
         *,
         temperature: float = 0.0,
-        max_tokens: int = 4096,
+        max_tokens: int = DEFAULT_JUDGE_MAX_TOKENS,
         expect_json: bool = False,
     ) -> JudgeResponse:
         body: dict[str, Any] = {
@@ -138,7 +155,10 @@ class JudgeClient:
         }
         if self._web_enabled:
             body["plugins"] = [{"id": "web"}]
-        with httpx.Client(timeout=_DEFAULT_TIMEOUT) as http:
+        client_kwargs: dict[str, Any] = {"timeout": _DEFAULT_TIMEOUT}
+        if self._transport is not None:
+            client_kwargs["transport"] = self._transport
+        with httpx.Client(**client_kwargs) as http:
             response = http.post(
                 f"{self._base}/chat/completions",
                 headers=self._headers,
@@ -157,16 +177,32 @@ class JudgeClient:
         content = message.get("content")
         text = content if isinstance(content, str) else _flatten_parts(content)
         usage = payload.get("usage") or {}
+        finish_reason = first.get("finish_reason")
 
         parsed = None
         if expect_json:
+            if not text and finish_reason == "length":
+                # Reasoning models (Kimi K2.6, etc.) can burn the entire
+                # completion budget on the thinking block and emit zero
+                # content. Surface this explicitly instead of a vague
+                # "empty text" so the operator knows to raise max_tokens.
+                reasoning_tokens = (
+                    (usage.get("completion_tokens_details") or {}).get(
+                        "reasoning_tokens"
+                    )
+                )
+                raise JudgeError(
+                    f"judge model {self._model!r} hit max_tokens before "
+                    f"emitting any content (finish_reason=length, "
+                    f"reasoning_tokens={reasoning_tokens}); raise max_tokens"
+                )
             parsed = _extract_json(text)
 
         return JudgeResponse(
             text=text,
             model=payload.get("model", self._model),
             provider=payload.get("provider"),
-            finish_reason=first.get("finish_reason"),
+            finish_reason=finish_reason,
             input_tokens=usage.get("prompt_tokens"),
             output_tokens=usage.get("completion_tokens"),
             parsed_json=parsed,

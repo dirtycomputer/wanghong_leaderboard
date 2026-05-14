@@ -25,11 +25,17 @@ The :mod:`judge.orchestrator` runs all five and applies the rubric
 caps before emitting ``evaluation_report.json``.
 """
 
-from judge.client import JudgeClient, JudgeError, JudgeResponse
+from judge.client import (
+    DEFAULT_JUDGE_MAX_TOKENS,
+    JudgeClient,
+    JudgeError,
+    JudgeResponse,
+)
 from judge.eval_version import EvalVersion
 from judge.rubric import RUBRIC_VERSION, RubricCaps, apply_rubric
 
 __all__ = [
+    "DEFAULT_JUDGE_MAX_TOKENS",
     "EvalVersion",
     "JudgeClient",
     "JudgeError",

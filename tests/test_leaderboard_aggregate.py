@@ -84,6 +84,21 @@ def test_aggregate_falls_back_to_parent_dir_name(tmp_path: Path):
     assert histories[0].latest.final_score == 55
 
 
+def test_aggregate_walks_above_evaluation_id_dir(tmp_path: Path):
+    """``submissions/<harness>/<eval-id>/evaluation_report.json`` layout
+    must pick the harness directory, not the eval-id directory.
+    """
+    _write_report(
+        tmp_path,
+        "submissions/baselines/planner_verifier/eval-20260513T205434Z",
+        evaluation_id="eval-20260513T205434Z",
+        final_score=52.2,
+    )
+    histories = aggregate(load_reports(tmp_path))
+    assert len(histories) == 1
+    assert histories[0].name == "planner_verifier"
+
+
 def test_aggregate_uses_report_harness_name_over_path(tmp_path: Path):
     _write_report(
         tmp_path,

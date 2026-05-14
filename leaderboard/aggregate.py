@@ -29,13 +29,21 @@ class EvaluationRecord:
         name = (self.report.get("submission") or {}).get("harness_name")
         if name:
             return str(name)
-        # Fall back to the submission directory name. ``judge_submission``
-        # writes the report next to the harness outputs, so the parent
-        # directory of the report file IS the submission dir. This lets
-        # the leaderboard separate baselines whose run_manifest.json
-        # was not populated.
-        parent = self.path.parent.name
-        return parent or "unknown"
+        # Fall back to a directory name in the report's path. Two
+        # layouts are common:
+        #   <harness>/evaluation_report.json
+        #   <harness>/<evaluation_id>/evaluation_report.json
+        # The second is the recommended ``submissions/`` layout; we
+        # detect it by checking whether the immediate parent dir is
+        # named after the evaluation_id and walk up one more level.
+        parent = self.path.parent
+        if (
+            parent.name == self.evaluation_id
+            and parent.parent != parent
+            and parent.parent.name
+        ):
+            return parent.parent.name
+        return parent.name or "unknown"
 
     @property
     def harness_version(self) -> str:

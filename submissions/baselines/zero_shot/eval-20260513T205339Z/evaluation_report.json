@@ -1,0 +1,149 @@
+{
+  "schema_version": "1.0",
+  "evaluation_id": "eval-20260513T205339Z",
+  "rubric_version": "kakeya3d-rubric-v0.1",
+  "gold_graph_hash": "77dd1e7cacbe2f0aaea9914e2b4e411a4e45b0480240ca8fd3c34087f4d9af10",
+  "target_paper_parse_hash": null,
+  "submission": {
+    "harness_name": null,
+    "harness_version": null,
+    "corpus_hash": null,
+    "path": "/tmp/wh_bench2/zero_shot"
+  },
+  "judges": {
+    "A": {
+      "passed": true,
+      "disqualifying_issues": [],
+      "warnings": [],
+      "leak_evidence_count": 0,
+      "citations_outside_corpus": [],
+      "files_present": [
+        "final_proof.md",
+        "proof_graph.json",
+        "cited_sources.json",
+        "self_critique.md",
+        "trace.jsonl"
+      ],
+      "files_missing": [],
+      "subscores": {
+        "protocol": 100.0,
+        "clarity": 100.0
+      },
+      "caps": [
+        {
+          "reason": "survey only — no new_lemmas in proof_graph.json",
+          "cap": 45.0,
+          "source": "judge_a_protocol"
+        }
+      ]
+    },
+    "B": {
+      "post_cutoff_evidence_found": false,
+      "severity": "none",
+      "recommended_action": "rank",
+      "protocol_subscore": 100.0,
+      "caps": [],
+      "model": "meta-llama/llama-3.3-70b-instruct"
+    },
+    "C": {
+      "target_theorem_match": 80.0,
+      "core_mechanism_match": 70.0,
+      "lemma_chain_match": 40.0,
+      "final_implication_match": 60.0,
+      "possible_equivalent_new_route": true,
+      "overall_subscore": 60.0,
+      "caps": [],
+      "model": "meta-llama/llama-3.3-70b-instruct"
+    },
+    "D": {
+      "fatal_gap_found": true,
+      "first_fatal_gap": {
+        "location": "Step 2: The Cordoba-type Argument",
+        "description": "Lack of precise quantification of the intersection size of two tubes and its dependency on the angle theta, as well as insufficient handling of the case when theta approaches zero.",
+        "severity": "fatal"
+      },
+      "correctness_subscore": 20.0,
+      "gap_resistance_subscore": 40.0,
+      "notes": "The proof outline lacks rigorous epsilon bookkeeping, and the transition between the combinatorial and harmonic analysis approaches is not clearly justified. The application of the Multilinear Kakeya Theorem and Polynomial Partitioning requires more precise control over the dependencies between the parameters involved.",
+      "caps": [
+        {
+          "reason": "fatal mathematical gap identified by judge D",
+          "cap": 70.0,
+          "source": "judge_d_adversarial"
+        }
+      ],
+      "model": "meta-llama/llama-3.3-70b-instruct"
+    },
+    "E": {
+      "classification": "known",
+      "novelty_subscore": 20.0,
+      "evidence": [
+        {
+          "description": "The submission outlines a proof strategy for the Kakeya conjecture in R^3, involving the Kakeya-maximal function approach and the Multilinear Kakeya framework, which are established techniques in the field.",
+          "url": "https://arxiv.org/pdf/2505.07695"
+        },
+        {
+          "description": "The use of polynomial partitioning and the multilinear estimate are also known techniques, as seen in the work of Guth and others.",
+          "url": "https://arxiv.org/pdf/2604.03416"
+        },
+        {
+          "description": "The overall strategy and techniques employed are similar to those found in existing literature, such as the work of Bourgain, Wolff, Tao, and Guth.",
+          "url": "https://link.springer.com/doi/10.1007/s000390050087"
+        }
+      ],
+      "notes": "While the submission presents a clear and well-structured outline of a proof strategy, it does not appear to introduce new or novel techniques beyond what is already known in the field. The use of established techniques and the lack of a clear breakthrough or innovation suggest a classification of 'known'.",
+      "caps": [],
+      "model": "meta-llama/llama-3.3-70b-instruct"
+    }
+  },
+  "subscores": {
+    "protocol": 100.0,
+    "gold_graph": 60.0,
+    "correctness": 20.0,
+    "gap_resistance": 40.0,
+    "novelty": 20.0,
+    "clarity": 100.0
+  },
+  "weighted_score": 53.0,
+  "applied_caps": [
+    {
+      "reason": "survey only — no new_lemmas in proof_graph.json",
+      "cap": 45.0,
+      "source": "judge_a_protocol"
+    }
+  ],
+  "final_score": 45.0,
+  "verdict": "FLAGGED",
+  "judge_models": [
+    {
+      "role": "A_protocol",
+      "model": "(pure-program)",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "B_contamination",
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "web_access": true,
+      "provider": null
+    },
+    {
+      "role": "C_gold_graph",
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "D_adversarial",
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "E_novelty",
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "web_access": true,
+      "provider": null
+    }
+  ]
+}

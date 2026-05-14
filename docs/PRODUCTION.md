@@ -147,10 +147,26 @@ because the calibration baseline numbers in
 [`docs/EVAL_VERSIONING.md`](EVAL_VERSIONING.md) were taken against
 the MinerU output format.
 
+### A note on arXiv rate-limiting
+
+`export.arxiv.org` rate-limits aggressively and the limiter is
+**IP-scoped and sticky** — repeated harvests in a short window earn a
+`429` block that lasts well beyond a single request. The harvester
+(`_fetch_arxiv_page`) retries `429` / `503` with exponential backoff
+(3 / 6 / 12 / 24 s), which absorbs *transient* throttling **mid-harvest**
+but is deliberately not tuned to wait out a full IP block — a corpus
+build should fail loudly, not hang silently for an hour.
+
+If you've been smoke-testing and then hit a wall of `429`s, that's the
+sticky block: **wait 30–60 minutes** before the full build, and don't
+run overlapping harvests.
+
 ### Build
 
 ```bash
 # 1. Smoke-build 5 papers first to confirm MinerU plumbing.
+#    (If this returns a wall of arXiv 429s, see the rate-limit note
+#    above — wait and retry.)
 python -m scripts.build_corpus --max-papers 5
 
 # 2. Inspect corpus/manifest.jsonl and corpus_hash.txt. The hash

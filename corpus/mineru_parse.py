@@ -142,10 +142,11 @@ class MineruClient:
                 raise MineruError(f"poll_task failed: {response.status_code} {body!r}")
 
             state = _extract_state(body).lower()
-            if state in {"done", "success", "completed", "finished"}:
+            if state in _TERMINAL_DONE:
                 return body
-            if state in {"failed", "error", "timeout"}:
-                raise MineruError(f"task {task_id} terminal state {state!r}: {body!r}")
+            if state in _TERMINAL_FAIL:
+                err = _extract_error(body) or repr(body)
+                raise MineruError(f"task {task_id} terminal state {state!r}: {err}")
 
             logger.debug("task %s state=%s; sleeping %.1fs", task_id, state, self._poll_interval)
             time.sleep(self._poll_interval)
@@ -239,12 +240,40 @@ def _decode_json(response: httpx.Response) -> Any:
         return {"raw_text": response.text}
 
 
+def _iter_file_results(body: Any) -> list[dict[str, Any]]:
+    """Return the per-file result dicts from a MinerU v4 batch response.
+
+    The real v4 ``extract-results/batch`` payload is::
+
+        {"code": 0, "data": {"batch_id": ..., "extract_result": [
+            {"file_name": ..., "state": ..., "err_msg": ...,
+             "full_zip_url": ...}, ...]}}
+
+    Older guesses used ``data.files`` / ``data.results``; both are kept
+    as fallbacks so a provider tweak does not silently break polling.
+    """
+    if not isinstance(body, dict):
+        return []
+    data = body.get("data", body)
+    if not isinstance(data, dict):
+        return []
+    for key in ("extract_result", "files", "results"):
+        files = data.get(key)
+        if isinstance(files, list):
+            return [f for f in files if isinstance(f, dict)]
+    return []
+
+
+_TERMINAL_DONE = {"done", "success", "completed", "finished"}
+_TERMINAL_FAIL = {"failed", "error", "timeout"}
+
+
 def _extract_task_id(body: Any) -> str:
     if not isinstance(body, dict):
         return ""
     data = body.get("data", body)
     if isinstance(data, dict):
-        for key in ("task_id", "id", "batch_id"):
+        for key in ("batch_id", "task_id", "id"):
             value = data.get(key)
             if isinstance(value, str) and value:
                 return value
@@ -252,33 +281,64 @@ def _extract_task_id(body: Any) -> str:
 
 
 def _extract_state(body: Any) -> str:
-    if not isinstance(body, dict):
+    """Aggregate one batch state from the per-file ``extract_result`` states.
+
+    ``done`` only when every file is terminal-done; ``failed`` if any
+    file failed (the orchestrator submits one file per batch, so this
+    is usually a single state). Falls back to a ``data.state`` /
+    ``data.status`` field for non-batch-shaped responses.
+    """
+    files = _iter_file_results(body)
+    if not files:
+        data = body.get("data", body) if isinstance(body, dict) else {}
+        if isinstance(data, dict):
+            for key in ("state", "status"):
+                value = data.get(key)
+                if isinstance(value, str):
+                    return value
         return ""
-    data = body.get("data", body)
-    if isinstance(data, dict):
-        for key in ("state", "status"):
-            value = data.get(key)
-            if isinstance(value, str):
-                return value
-    return ""
+    states = [str(f.get("state") or "").lower() for f in files]
+    if any(s in _TERMINAL_FAIL for s in states):
+        return "failed"
+    if all(s in _TERMINAL_DONE for s in states):
+        return "done"
+    # Still running — surface the first non-terminal state for the log.
+    for s in states:
+        if s not in _TERMINAL_DONE:
+            return s or "running"
+    return "running"
+
+
+def _extract_error(body: Any) -> str:
+    """Concatenate per-file ``err_msg`` values for a failed batch."""
+    msgs = [
+        str(f.get("err_msg") or "").strip()
+        for f in _iter_file_results(body)
+        if str(f.get("state") or "").lower() in _TERMINAL_FAIL
+    ]
+    return "; ".join(m for m in msgs if m)
 
 
 def _extract_zip_url(body: Any, pdf_url: str) -> str:
-    if not isinstance(body, dict):
-        return ""
-    data = body.get("data", body)
-    candidates: list[dict[str, Any]] = []
-    if isinstance(data, dict):
-        files = data.get("files") or data.get("results") or data.get("extract_result") or []
-        if isinstance(files, list):
-            candidates = [f for f in files if isinstance(f, dict)]
-        if not candidates and "full_zip_url" in data:
-            return str(data["full_zip_url"])
-    for cand in candidates:
-        if cand.get("url") == pdf_url and isinstance(cand.get("full_zip_url"), str):
-            return cand["full_zip_url"]
-    for cand in candidates:
-        url = cand.get("full_zip_url")
+    files = _iter_file_results(body)
+    # The batch may carry several files; prefer the one whose
+    # ``file_name`` matches the requested PDF.
+    want = pdf_url.rsplit("/", 1)[-1]
+    if want.endswith(".pdf"):
+        want = want[: -len(".pdf")]
+    for f in files:
+        name = str(f.get("file_name") or "")
+        url = f.get("full_zip_url")
+        if isinstance(url, str) and url and (name == want or (name and name in pdf_url)):
+            return url
+    # Fallback: any full_zip_url on a done file.
+    for f in files:
+        url = f.get("full_zip_url")
         if isinstance(url, str) and url:
             return url
+    # Some responses put the url directly on ``data``.
+    if isinstance(body, dict):
+        data = body.get("data", body)
+        if isinstance(data, dict) and isinstance(data.get("full_zip_url"), str):
+            return data["full_zip_url"]
     return ""

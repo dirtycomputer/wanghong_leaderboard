@@ -215,6 +215,95 @@ def test_search_arxiv_paginates_until_short_page():
     assert calls["n"] == 2
 
 
+def test_search_arxiv_retries_on_429_then_succeeds():
+    # Regression: arXiv rate-limits aggressively. A bare raise_for_status
+    # aborted the whole harvest on the first 429. The harvester must
+    # back off and retry transient 429 / 503.
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            return httpx.Response(429, text="Too Many Requests")
+        return httpx.Response(
+            200,
+            text=_atom_feed(
+                [
+                    {
+                        "id": "2024.00001",
+                        "version": "v1",
+                        "title": "After backoff",
+                        "published": "2024-06-01T00:00:00Z",
+                    }
+                ]
+            ),
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+        results = list(
+            search_arxiv(
+                "all:Kakeya",
+                cutoff=DEFAULT_CUTOFF,
+                max_results=10,
+                page_size=2,
+                client=http,
+                sleep_seconds=0.0,  # also zeroes the retry backoff
+            )
+        )
+
+    assert [r.arxiv_id for r in results] == ["2024.00001"]
+    assert calls["n"] == 3  # two 429s + one success
+
+
+def test_search_arxiv_gives_up_after_max_retries_on_persistent_429():
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(429, text="Too Many Requests")
+
+    with (
+        httpx.Client(transport=httpx.MockTransport(handler)) as http,
+        pytest.raises(httpx.HTTPStatusError),
+    ):
+        list(
+            search_arxiv(
+                "all:Kakeya",
+                cutoff=DEFAULT_CUTOFF,
+                max_results=10,
+                page_size=2,
+                client=http,
+                sleep_seconds=0.0,
+            )
+        )
+    # default max_retries=4 -> 1 initial + 4 retries
+    assert calls["n"] == 5
+
+
+def test_search_arxiv_does_not_retry_on_400():
+    # A malformed query is not transient — fail fast, no retries.
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(400, text="Bad Request")
+
+    with (
+        httpx.Client(transport=httpx.MockTransport(handler)) as http,
+        pytest.raises(httpx.HTTPStatusError),
+    ):
+        list(
+            search_arxiv(
+                "all:Kakeya",
+                cutoff=DEFAULT_CUTOFF,
+                max_results=10,
+                client=http,
+                sleep_seconds=0.0,
+            )
+        )
+    assert calls["n"] == 1  # no retries on a non-transient status
+
+
 def _make_result(submitted: datetime) -> ArxivResult:
     return ArxivResult(
         arxiv_id="2024.12345",

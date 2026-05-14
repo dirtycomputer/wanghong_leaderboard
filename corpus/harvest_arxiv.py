@@ -107,18 +107,14 @@ def search_arxiv(
         start = 0
         while emitted < max_results:
             window = min(page_size, max_results - emitted)
-            response = http.get(
-                ARXIV_API,
-                params={
-                    "search_query": query,
-                    "start": start,
-                    "max_results": window,
-                    "sortBy": "submittedDate",
-                    "sortOrder": "ascending",
-                },
+            xml_text = _fetch_arxiv_page(
+                http,
+                query=query,
+                start=start,
+                window=window,
+                backoff_base=sleep_seconds,
             )
-            response.raise_for_status()
-            entries = _parse_atom_feed(response.text)
+            entries = _parse_atom_feed(xml_text)
             if not entries:
                 return
             for entry in entries:
@@ -143,6 +139,66 @@ def search_arxiv(
     finally:
         if owned_client:
             http.close()
+
+
+#: HTTP statuses arXiv uses for transient rate-limiting / overload.
+#: ``export.arxiv.org`` is fronted by a CDN that returns 429 under load
+#: and 503 during maintenance windows; both clear on their own.
+_ARXIV_RETRYABLE_STATUS = frozenset({429, 503})
+
+
+def _fetch_arxiv_page(
+    http: httpx.Client,
+    *,
+    query: str,
+    start: int,
+    window: int,
+    backoff_base: float,
+    max_retries: int = 4,
+) -> str:
+    """GET one page of the arXiv Atom feed, retrying transient failures.
+
+    arXiv rate-limits aggressively; a bare ``raise_for_status`` aborts
+    the whole harvest on the first ``429``. This retries ``429`` /
+    ``503`` and transport errors with exponential backoff
+    (``backoff_base * 2**attempt``). Non-transient 4xx (e.g. a
+    malformed query) still fails fast. ``backoff_base`` is wired to the
+    caller's ``sleep_seconds`` so tests can set it to ``0`` for instant
+    retries.
+    """
+    params = {
+        "search_query": query,
+        "start": start,
+        "max_results": window,
+        "sortBy": "submittedDate",
+        "sortOrder": "ascending",
+    }
+    last_exc: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            response = http.get(ARXIV_API, params=params)
+        except httpx.TransportError as exc:
+            last_exc = exc
+        else:
+            if response.status_code not in _ARXIV_RETRYABLE_STATUS:
+                response.raise_for_status()
+                return response.text
+            last_exc = httpx.HTTPStatusError(
+                f"arXiv transient {response.status_code}",
+                request=response.request,
+                response=response,
+            )
+            logger.warning(
+                "arXiv %s on start=%d (attempt %d/%d)",
+                response.status_code, start, attempt + 1, max_retries + 1,
+            )
+        if attempt < max_retries:
+            # Backoff is wired to the caller's politeness delay: the
+            # default 3s gives 3 / 6 / 12 / 24s; tests pass 0 for
+            # instant retries.
+            time.sleep(backoff_base * (2 ** attempt))
+    assert last_exc is not None
+    raise last_exc
 
 
 def _parse_atom_feed(xml_text: str) -> list[ArxivResult]:

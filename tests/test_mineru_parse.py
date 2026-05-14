@@ -67,11 +67,21 @@ class FakeMineruClient:
         self.downloaded: list[str] = []
         self._task_id = task_id
         self._zip_bytes = zip_bytes
+        # Real MinerU v4 ``extract-results/batch`` response shape:
+        # the per-file state + zip url live under data.extract_result[].
         self._poll_result = poll_result or {
+            "code": 0,
             "data": {
-                "state": "done",
-                "files": [{"full_zip_url": "https://example.com/result.zip"}],
-            }
+                "batch_id": task_id,
+                "extract_result": [
+                    {
+                        "file_name": "2024.00001",
+                        "state": "done",
+                        "err_msg": "",
+                        "full_zip_url": "https://example.com/result.zip",
+                    }
+                ],
+            },
         }
         self._model_version = model_version
 
@@ -107,7 +117,7 @@ def test_parse_pdf_url_writes_meta_and_hashes(tmp_path: Path):
 
 def test_parse_pdf_url_raises_when_no_zip(tmp_path: Path):
     client = FakeMineruClient(
-        poll_result={"data": {"state": "done", "files": []}}
+        poll_result={"code": 0, "data": {"batch_id": "x", "extract_result": []}}
     )
     with pytest.raises(MineruError):
         parse_pdf_url(
@@ -127,12 +137,92 @@ def test_parse_pdf_url_raises_when_missing_full_md(tmp_path: Path):
         )
 
 
-def test_extract_state_and_task_id_helpers():
+# A verbatim MinerU v4 ``extract-results/batch`` success payload, as
+# captured from the live API during the P8 probe.
+_REAL_DONE = {
+    "code": 0,
+    "msg": "ok",
+    "trace_id": "06782c684c3b9123678fbce11eb31a4f",
+    "data": {
+        "batch_id": "b19e37f8-9e22-4c31-805d-38d30d6664cf",
+        "extract_result": [
+            {
+                "file_name": "9807163v1",
+                "state": "done",
+                "err_msg": "",
+                "full_zip_url": "https://cdn-mineru.example/result.zip",
+            }
+        ],
+    },
+}
+
+
+def test_extract_task_id_prefers_batch_id():
+    assert mineru_parse._extract_task_id(_REAL_DONE) == (
+        "b19e37f8-9e22-4c31-805d-38d30d6664cf"
+    )
     assert mineru_parse._extract_task_id({"data": {"task_id": "abc"}}) == "abc"
-    assert mineru_parse._extract_task_id({"batch_id": "xyz"}) == "xyz"
     assert mineru_parse._extract_task_id({}) == ""
+
+
+def test_extract_state_reads_per_file_results():
+    # Regression: the real API puts state at data.extract_result[].state,
+    # NOT data.state. The original guessed parser returned "" here and
+    # poll_task spun until timeout on every paper.
+    assert mineru_parse._extract_state(_REAL_DONE) == "done"
+
+
+def test_extract_state_running_when_any_file_incomplete():
+    body = {
+        "data": {
+            "extract_result": [
+                {"file_name": "a", "state": "done"},
+                {"file_name": "b", "state": "running"},
+            ]
+        }
+    }
+    assert mineru_parse._extract_state(body) == "running"
+
+
+def test_extract_state_failed_when_any_file_failed():
+    body = {
+        "data": {
+            "extract_result": [
+                {"file_name": "a", "state": "done"},
+                {"file_name": "b", "state": "failed", "err_msg": "bad pdf"},
+            ]
+        }
+    }
+    assert mineru_parse._extract_state(body) == "failed"
+    assert "bad pdf" in mineru_parse._extract_error(body)
+
+
+def test_extract_state_falls_back_to_data_state():
+    # Non-batch-shaped responses (or a provider tweak) may still put a
+    # bare state field on data.
     assert mineru_parse._extract_state({"data": {"state": "Done"}}) == "Done"
     assert mineru_parse._extract_state({"status": "failed"}) == "failed"
+    assert mineru_parse._extract_state({}) == ""
+
+
+def test_extract_zip_url_from_real_shape():
+    assert mineru_parse._extract_zip_url(
+        _REAL_DONE, "https://arxiv.org/pdf/math/9807163v1"
+    ) == "https://cdn-mineru.example/result.zip"
+
+
+def test_extract_zip_url_matches_correct_file_in_multi_file_batch():
+    body = {
+        "data": {
+            "extract_result": [
+                {"file_name": "1111.11111", "state": "done", "full_zip_url": "https://a.zip"},
+                {"file_name": "2222.22222", "state": "done", "full_zip_url": "https://b.zip"},
+            ]
+        }
+    }
+    assert mineru_parse._extract_zip_url(
+        body, "https://arxiv.org/pdf/2222.22222.pdf"
+    ) == "https://b.zip"
 
 
 def test_mineru_client_requires_api_key():

@@ -1,0 +1,137 @@
+{
+  "schema_version": "1.0",
+  "evaluation_id": "eval-20260514T090225Z",
+  "rubric_version": "kakeya3d-rubric-v0.1",
+  "gold_graph_hash": "77dd1e7cacbe2f0aaea9914e2b4e411a4e45b0480240ca8fd3c34087f4d9af10",
+  "target_paper_parse_hash": null,
+  "submission": {
+    "harness_name": null,
+    "harness_version": null,
+    "corpus_hash": null,
+    "path": "/tmp/wh_bench2/planner_verifier"
+  },
+  "judges": {
+    "A": {
+      "passed": true,
+      "disqualifying_issues": [],
+      "warnings": [],
+      "leak_evidence_count": 0,
+      "citations_outside_corpus": [],
+      "files_present": [
+        "final_proof.md",
+        "proof_graph.json",
+        "cited_sources.json",
+        "self_critique.md",
+        "trace.jsonl"
+      ],
+      "files_missing": [],
+      "subscores": {
+        "protocol": 100.0,
+        "clarity": 100.0
+      },
+      "caps": []
+    },
+    "B": {
+      "post_cutoff_evidence_found": false,
+      "severity": "none",
+      "recommended_action": "rank",
+      "protocol_subscore": 100.0,
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "C": {
+      "target_theorem_match": 100.0,
+      "core_mechanism_match": 25.0,
+      "lemma_chain_match": 20.0,
+      "final_implication_match": 30.0,
+      "possible_equivalent_new_route": true,
+      "overall_subscore": 35.0,
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "D": {
+      "fatal_gap_found": true,
+      "first_fatal_gap": {
+        "location": "proof_graph.json node 'Kakeya Maximal Function Bound' / final plan Lemma 5",
+        "description": "The proof_graph.json explicitly records the L^3 Kakeya maximal function bound as 'conjectural' with empty dependencies, while the final plan asserts it as 'proved' without valid reduction. This bound is equivalent to the target theorem and remains a major open problem; assuming it makes the argument circular and conditional rather than an unconditional proof.",
+        "severity": "fatal"
+      },
+      "correctness_subscore": 0.0,
+      "gap_resistance_subscore": 0.0,
+      "notes": "Additional sub-fatal weaknesses: (1) The Multilinear Kakeya Estimate in the final plan omits the essential 1/(n-1) power in the integrand, misstating the endpoint inequality and rendering the lemma trivial rather than useful. (2) The 'Guth-Katz Algebraic Case Analysis' lemma is mathematically incoherent and not a known result. (3) The Maximal Function to Hausdorff Dimension Bridge falsely asserts that Minkowski dimension 3 implies Hausdorff dimension 3 for Borel sets. (4) The Polynomial Cell Decomposition in proof_graph.json relies on the undefined phrase 'limited number of tubes'.",
+      "caps": [
+        {
+          "reason": "fatal mathematical gap identified by judge D",
+          "cap": 70.0,
+          "source": "judge_d_adversarial"
+        }
+      ],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "E": {
+      "classification": "pre_cutoff_combination",
+      "novelty_subscore": 5.0,
+      "evidence": [
+        {
+          "description": "The submission’s proof plan relies on polynomial partitioning for tubes and Guth-Katz algebraic case analysis—core ingredients of the pre-2024 attack on Kakeya. The actual post-cutoff streamlined proof by Wang and Zahl explicitly states that polynomial partitioning is no longer needed, having replaced it with a reduction to the sticky Kakeya theorem.",
+          "url": "https://arxiv.org/html/2601.14411v1"
+        },
+        {
+          "description": "The recent resolution of the 3D Kakeya conjecture by Hong Wang and Joshua Zahl proceeds via sticky Kakeya and multi-scale structure theorems for tubes and prisms, not via the conjectural Kakeya maximal function bound and sum-product framework outlined in the submission.",
+          "url": "https://arxiv.org/pdf/2505.07695"
+        },
+        {
+          "description": "The Wang-Zahl program proves that every Kakeya set in R^3 has Assouad dimension 3 and reduces the general case to the sticky case, a route entirely absent from the submission, which instead assembles classical multilinear and arithmetic-combinatoric estimates.",
+          "url": "https://link.springer.com/article/10.1007/s00222-025-01336-x"
+        }
+      ],
+      "notes": "The submission combines well-known pre-cutoff tools—Bennett-Carbery-Tao multilinear Kakeya, Guth-Katz polynomial partitioning, sum-product estimates, and a conjectural maximal function bound—into a conditional plan that does not engage with the post-cutoff sticky Kakeya framework or the multi-scale tube/prism structure theorems that resolved the conjecture.",
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    }
+  },
+  "subscores": {
+    "protocol": 100.0,
+    "gold_graph": 35.0,
+    "correctness": 0.0,
+    "gap_resistance": 0.0,
+    "novelty": 5.0,
+    "clarity": 100.0
+  },
+  "weighted_score": 34.25,
+  "applied_caps": [],
+  "final_score": 34.25,
+  "verdict": "FLAGGED",
+  "judge_models": [
+    {
+      "role": "A_protocol",
+      "model": "(pure-program)",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "B_contamination",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": true,
+      "provider": null
+    },
+    {
+      "role": "C_gold_graph",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "D_adversarial",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "E_novelty",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": true,
+      "provider": null
+    }
+  ]
+}

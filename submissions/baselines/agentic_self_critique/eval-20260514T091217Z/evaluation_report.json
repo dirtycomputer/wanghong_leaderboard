@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "evaluation_id": "eval-20260514T091217Z",
+  "rubric_version": "kakeya3d-rubric-v0.1",
+  "gold_graph_hash": "77dd1e7cacbe2f0aaea9914e2b4e411a4e45b0480240ca8fd3c34087f4d9af10",
+  "target_paper_parse_hash": null,
+  "submission": {
+    "harness_name": null,
+    "harness_version": null,
+    "corpus_hash": null,
+    "path": "/tmp/wh_bench2/agentic_self_critique"
+  },
+  "judges": {
+    "A": {
+      "passed": true,
+      "disqualifying_issues": [],
+      "warnings": [],
+      "leak_evidence_count": 0,
+      "citations_outside_corpus": [],
+      "files_present": [
+        "final_proof.md",
+        "proof_graph.json",
+        "cited_sources.json",
+        "self_critique.md",
+        "trace.jsonl"
+      ],
+      "files_missing": [],
+      "subscores": {
+        "protocol": 100.0,
+        "clarity": 100.0
+      },
+      "caps": [
+        {
+          "reason": "survey only — no new_lemmas in proof_graph.json",
+          "cap": 45.0,
+          "source": "judge_a_protocol"
+        }
+      ]
+    },
+    "B": {
+      "post_cutoff_evidence_found": false,
+      "severity": "none",
+      "recommended_action": "rank",
+      "protocol_subscore": 100.0,
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "C": {
+      "target_theorem_match": 90.0,
+      "core_mechanism_match": 10.0,
+      "lemma_chain_match": 5.0,
+      "final_implication_match": 5.0,
+      "possible_equivalent_new_route": false,
+      "overall_subscore": 20.0,
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "D": {
+      "fatal_gap_found": true,
+      "first_fatal_gap": {
+        "location": "Step 3 / Lemma 'Intercept-Sum Identity'",
+        "description": "The candidate claims that the geometric overlap condition for two δ-tubes—a + t₁θ₁ ≈ b + t₂θ₂, which is a 4-ary relation in the independent parameters (a, θ₁, b, θ₂)—can be encoded as a bipartite graph G ⊂ A × B with A = {intercepts} and B = {shifted directions tθ}. This is structurally impossible: G ⊂ A × B is a binary relation and cannot capture the simultaneous dependence on two intercepts and two directions. The candidate never defines a map from ordered pairs of tubes into A × B, never proves that membership (a, b) ∈ G is equivalent to geometric overlap, and never justifies the assertion that the sumset {a + b : (a, b) ∈ G} counts distinct spatial overlap regions. In fact, a + b mixes an intercept from one tube with a direction parameter from another tube, which has no geometric interpretation as an overlap location; likewise, a − b does not reproduce the stated overlap equation without additional unmotivated constraints. Because the hypotheses of the Katz–Tao sum-difference lemma are not satisfied, the combinatorial engine cannot be engaged. The step further lacks any quantified dependence between δ and N, any epsilon bookkeeping, and any treatment of exceptional configurations (e.g., nearly parallel tubes or intercepts near grid boundaries).",
+        "severity": "fatal"
+      },
+      "correctness_subscore": 5.0,
+      "gap_resistance_subscore": 5.0,
+      "notes": "The proof collapses at its purported bridge between continuous geometry and additive combinatorics. Prior to Step 3 the argument is merely incomplete; in Step 3 the candidate presents an incoherent algebraic formalization that cannot support any subsequent t-discretization, slice summation, or volume estimate. All later steps depend on this unfounded identification and are therefore moot. No polynomial loss factors in δ are tracked, no disjointness or overcounting analysis for the sets G_j can salvage the argument, and no exceptional configurations are handled.",
+      "caps": [
+        {
+          "reason": "fatal mathematical gap identified by judge D",
+          "cap": 70.0,
+          "source": "judge_d_adversarial"
+        }
+      ],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "E": {
+      "classification": "known",
+      "novelty_subscore": 0.0,
+      "evidence": [
+        {
+          "description": "The bound (4n+3)/7 for the Minkowski dimension of Kakeya sets and the additive-combinatorics approach using sum-difference estimates were established in the early 2000s.",
+          "url": "https://arxiv.org/abs/math/0102135"
+        },
+        {
+          "description": "Recent literature surveys the Katz-Tao arithmetic Kakeya framework and notes that the core sum-difference bound has remained unchanged for over 20 years, confirming the approach is well-established.",
+          "url": "https://arxiv.org/pdf/2411.13395"
+        },
+        {
+          "description": "Katz explicitly discussed the sum-differences method in the context of Kakeya problems, ruling out elementary variants but cementing the approach as classical literature.",
+          "url": "https://eudml.org/doc/41781"
+        }
+      ],
+      "notes": "The submission reconstructs the classical Katz-Tao arithmetic combinatorics route to Kakeya bounds: discretizing tubes into a δ-grid, mapping geometric overlaps to sum/difference sets, and invoking the Katz-Tao sum-difference lemma to obtain the bound (4n+3)/7 (15/7 for n=3). This strategy, including the specific exponent and intercept-sum identity, has been known since the early 2000s (e.g., arXiv:0102135). The proof_graph.json even lists arXiv:0102135 as a retrieved dependency, confirming the submission is drawn from existing literature rather than an independent novel route.",
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    }
+  },
+  "subscores": {
+    "protocol": 100.0,
+    "gold_graph": 20.0,
+    "correctness": 5.0,
+    "gap_resistance": 5.0,
+    "novelty": 0.0,
+    "clarity": 100.0
+  },
+  "weighted_score": 32.0,
+  "applied_caps": [],
+  "final_score": 32.0,
+  "verdict": "FLAGGED",
+  "judge_models": [
+    {
+      "role": "A_protocol",
+      "model": "(pure-program)",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "B_contamination",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": true,
+      "provider": null
+    },
+    {
+      "role": "C_gold_graph",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "D_adversarial",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "E_novelty",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": true,
+      "provider": null
+    }
+  ]
+}

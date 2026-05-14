@@ -192,9 +192,11 @@ for reproducibility.
 | P1 Bootstrap + Safety | merged | proxy + canary + tests |
 | P2 Corpus pipeline | merged | arXiv harvester (`submittedDate < 2025-01-01 GMT`) + MinerU v4 parse + `manifest.jsonl` + `corpus_hash` + vault pipeline for target paper |
 | P3 Runner + schemas + starter | merged | Docker sandbox runner (`--network kakeya-internal`, immutable digest only), JSON schemas, fork-and-go starter, `kakeya-lb` CLI |
-| P4 Judge stack | PR #4 | 5-layer judges (protocol / contamination / gold-graph / adversarial / novelty); LLM-only gold graph for MVP; rubric + caps; evaluation_report schema |
-| P5 Baselines + alpha | this PR | 4 reference baselines + `run_baseline` CLI + alpha public rules + evaluator versioning doc |
-| P6 Public leaderboard | this PR | Static-site generator (`leaderboard/`) — index + per-submission detail + anti-cheat events; reproducible byte-for-byte |
+| P4 Judge stack | merged | 5-layer judges (protocol / contamination / gold-graph / adversarial / novelty); LLM-only gold graph for MVP; rubric + caps; evaluation_report schema |
+| P5 Baselines + alpha | merged | 4 reference baselines + `run_baseline` CLI + alpha public rules + evaluator versioning doc |
+| P5.1 Live-run fixes | merged | arXiv old-format ID regex, Judge B conjecture-statement carve-out, LaTeX-tolerant JSON parser |
+| P6 Public leaderboard | merged | Static-site generator (`leaderboard/`) — index + per-submission detail + anti-cheat events; reproducible byte-for-byte |
+| P7 Production readiness | this PR | GitHub Actions for CI + Pages deploy, redactor for `submissions/` publication, `verify_judge_key` pre-flight, `docs/PRODUCTION.md` runbook, seed `submissions/baselines/` |
 
-See `docs/PUBLIC_RULES.md` and `docs/EVAL_VERSIONING.md` for the full
-plan.
+See `docs/PUBLIC_RULES.md`, `docs/EVAL_VERSIONING.md` and
+`docs/PRODUCTION.md` for the full plan.

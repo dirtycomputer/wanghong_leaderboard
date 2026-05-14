@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "evaluation_id": "eval-20260514T085246Z",
+  "rubric_version": "kakeya3d-rubric-v0.1",
+  "gold_graph_hash": "77dd1e7cacbe2f0aaea9914e2b4e411a4e45b0480240ca8fd3c34087f4d9af10",
+  "target_paper_parse_hash": null,
+  "submission": {
+    "harness_name": null,
+    "harness_version": null,
+    "corpus_hash": null,
+    "path": "/tmp/wh_bench2/zero_shot"
+  },
+  "judges": {
+    "A": {
+      "passed": true,
+      "disqualifying_issues": [],
+      "warnings": [],
+      "leak_evidence_count": 0,
+      "citations_outside_corpus": [],
+      "files_present": [
+        "final_proof.md",
+        "proof_graph.json",
+        "cited_sources.json",
+        "self_critique.md",
+        "trace.jsonl"
+      ],
+      "files_missing": [],
+      "subscores": {
+        "protocol": 100.0,
+        "clarity": 100.0
+      },
+      "caps": [
+        {
+          "reason": "survey only — no new_lemmas in proof_graph.json",
+          "cap": 45.0,
+          "source": "judge_a_protocol"
+        }
+      ]
+    },
+    "B": {
+      "post_cutoff_evidence_found": false,
+      "severity": "none",
+      "recommended_action": "rank",
+      "protocol_subscore": 100.0,
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "C": {
+      "target_theorem_match": 95.0,
+      "core_mechanism_match": 15.0,
+      "lemma_chain_match": 0.0,
+      "final_implication_match": 5.0,
+      "possible_equivalent_new_route": true,
+      "overall_subscore": 15.0,
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "D": {
+      "fatal_gap_found": true,
+      "first_fatal_gap": {
+        "location": "Section 4 (Polynomial Partitioning), Algebraic Case",
+        "description": "The candidate asserts that in the algebraic case, a surface cannot contain 'too many' lines in 'too many' directions without being a plane, and claims this is 'handled by the fact that Kakeya sets must have directions in all orientations.' This is a fatal non-sequitur. Non-planar ruled surfaces (e.g., reguli) already contain 2-parameter families of lines spanning a 2-dimensional subset of S^2, so the all-directions hypothesis does not force planarity. The candidate supplies no quantitative relationship between the partitioning degree D, the scale δ, and the number of directions required to rule out non-planar ruled surfaces; provides no epsilon-bookkeeping, scale-dependent induction hypothesis, or exceptional-set analysis; and omits the core ruled-surface geometry (vanishing of the second fundamental form, classification of flat points, etc.) that any valid polynomial-partitioning proof requires. Consequently, the central obstruction of the linear Kakeya problem remains entirely unaddressed.",
+        "severity": "fatal"
+      },
+      "correctness_subscore": 10.0,
+      "gap_resistance_subscore": 5.0,
+      "notes": "The outline correctly names standard objects (maximal function, multilinear Kakeya, polynomial partitioning) but collapses at the exact location where the linear conjecture must be extracted from the multilinear estimate: the algebraic case is dismissed with circular reasoning rather than quantitative geometric analysis.",
+      "caps": [
+        {
+          "reason": "fatal mathematical gap identified by judge D",
+          "cap": 70.0,
+          "source": "judge_d_adversarial"
+        }
+      ],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    },
+    "E": {
+      "classification": "pre_cutoff_combination",
+      "novelty_subscore": 5.0,
+      "evidence": [
+        {
+          "description": "The actual resolution of the 3D Kakeya conjecture by Wang and Zahl is built on multiscale analysis and the sticky Kakeya theorem, not on the multilinear-to-linear polynomial-partitioning bridge outlined in the submission.",
+          "url": "https://arxiv.org/pdf/2505.07695"
+        },
+        {
+          "description": "A streamlined proof of the conjecture explicitly notes that polynomial partitioning—central to the submission's Strategy C—is no longer needed, and instead derives the result from the sticky Kakeya framework.",
+          "url": "https://arxiv.org/html/2601.14411v1"
+        },
+        {
+          "description": "A survey of the post-cutoff proof identifies multiscale analysis as the 'hero' of the argument, contrasting sharply with the pre-cutoff bush/multilinear/partitioning combination presented here.",
+          "url": "https://arxiv.org/pdf/2604.03416"
+        }
+      ],
+      "notes": "The submission stitches together well-known pre-cutoff tools (Wolff bush argument, Guth multilinear Kakeya, Guth polynomial partitioning) but omits the post-cutoff innovations (sticky Kakeya, multiscale analysis) required for the actual proof. The embedded proof_graph.json confirms this is an underived zero-shot baseline with a fatal gap.",
+      "caps": [],
+      "model": "moonshotai/kimi-k2.6-20260420"
+    }
+  },
+  "subscores": {
+    "protocol": 100.0,
+    "gold_graph": 15.0,
+    "correctness": 10.0,
+    "gap_resistance": 5.0,
+    "novelty": 5.0,
+    "clarity": 100.0
+  },
+  "weighted_score": 32.5,
+  "applied_caps": [],
+  "final_score": 32.5,
+  "verdict": "FLAGGED",
+  "judge_models": [
+    {
+      "role": "A_protocol",
+      "model": "(pure-program)",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "B_contamination",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": true,
+      "provider": null
+    },
+    {
+      "role": "C_gold_graph",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "D_adversarial",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": false,
+      "provider": null
+    },
+    {
+      "role": "E_novelty",
+      "model": "moonshotai/kimi-k2.6",
+      "web_access": true,
+      "provider": null
+    }
+  ]
+}

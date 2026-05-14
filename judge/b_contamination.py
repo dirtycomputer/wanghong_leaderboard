@@ -104,7 +104,6 @@ def run(submission_dir: Path, *, client: JudgeClient) -> JudgeBResult:
             ],
             expect_json=True,
             temperature=0.0,
-            max_tokens=2048,
         )
     except JudgeError:
         return _inconclusive(client.model)

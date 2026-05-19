@@ -40,7 +40,7 @@
     },
     "pre_cutoff_dependencies": {
       "type": "array",
-      "description": "Every external mathematical fact used in the proof, citing its source. Sources MUST be in the time-capsule corpus.",
+      "description": "Every external mathematical fact used in the proof, citing its pre-cutoff source.",
       "items": {
         "type": "object",
         "required": ["arxiv_id", "claim"],
@@ -49,7 +49,7 @@
           "arxiv_id": {
             "type": "string",
             "pattern": "^(?:[a-z\\-]+(?:\\.[A-Z]{2})?/)?(?:[0-9]{4}\\.[0-9]{4,5}|[0-9]{7})(?:v[0-9]+)?$",
-            "description": "arXiv id of a corpus paper. Accepts new-format (1909.10973v3) and pre-April-2007 short form (0010069v2); optional subject prefix accepted but normally already stripped by the harvester."
+            "description": "arXiv id of a pre-cutoff source. Accepts new-format (1909.10973v3) and pre-April-2007 short form (0010069v2)."
           },
           "claim": { "type": "string", "minLength": 1 },
           "where_used": { "type": "string" }
@@ -77,7 +77,7 @@
           "depends_on": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Names of other definitions / lemmas / corpus citations."
+            "description": "Names of other definitions, lemmas, or citations."
           },
           "used_for": {
             "type": "array",

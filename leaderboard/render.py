@@ -267,8 +267,6 @@ def _render_detail(
         else "<p class='note'>This is the only evaluation recorded for this harness.</p>"
     )
 
-    submission = ev.report.get("submission") or {}
-    corpus_hash = str(submission.get("corpus_hash") or "—")
     gold_hash = str(ev.report.get("gold_graph_hash") or "—")
 
     body = (
@@ -286,7 +284,6 @@ def _render_detail(
         f"<p class='meta'>"
         f"evaluation_id={html.escape(ev.evaluation_id)} · "
         f"rubric={html.escape(ev.rubric_version)} · "
-        f"corpus_hash={html.escape(corpus_hash)} · "
         f"gold_graph_hash={html.escape(gold_hash)} · "
         f"generated {html.escape(generated_at)}"
         "</p>"

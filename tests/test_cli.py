@@ -2,43 +2,44 @@
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 import orjson
 import pytest
 import yaml
 
-from cli.kakeya_lb.main import main
+from runner.cli import main
 
 
-def _starter_copy(dest: Path) -> Path:
-    shutil.copytree(Path("starter"), dest)
+def _harness_copy(dest: Path) -> Path:
+    import shutil
+
+    shutil.copytree(Path("harnesses/model"), dest)
     return dest
 
 
-def test_validate_starter_succeeds(tmp_path: Path, capsys):
-    target = _starter_copy(tmp_path / "h")
+def test_validate_harness_succeeds(tmp_path: Path, capsys):
+    target = _harness_copy(tmp_path / "h")
     rc = main(["validate", str(target)])
     captured = capsys.readouterr()
     assert rc == 0
     assert "OK" in captured.out
 
 
-def test_validate_refuses_external_apis(tmp_path: Path, capsys):
-    target = _starter_copy(tmp_path / "h")
+def test_validate_refuses_native_tools(tmp_path: Path, capsys):
+    target = _harness_copy(tmp_path / "h")
     yaml_path = target / "harness.yaml"
     raw = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
-    raw["claims"]["uses_external_apis"] = True
+    raw["capabilities"]["native_tools"] = True
     yaml_path.write_text(yaml.safe_dump(raw), encoding="utf-8")
     rc = main(["validate", str(target)])
     err = capsys.readouterr().err
     assert rc == 1
-    assert "uses_external_apis" in err
+    assert "native_tools" in err
 
 
 def test_validate_reports_schema_errors(tmp_path: Path, capsys):
-    target = _starter_copy(tmp_path / "h")
+    target = _harness_copy(tmp_path / "h")
     yaml_path = target / "harness.yaml"
     raw = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
     raw["resources"]["max_wall_time_hours"] = 99  # > 48
@@ -49,22 +50,12 @@ def test_validate_reports_schema_errors(tmp_path: Path, capsys):
     assert "max_wall_time_hours" in err
 
 
-def test_init_copies_starter(tmp_path: Path, capsys):
-    dest = tmp_path / "fresh"
-    rc = main(["init", str(dest)])
-    assert rc == 0
-    assert (dest / "Dockerfile").exists()
-    assert (dest / "harness.yaml").exists()
-    assert (dest / "src" / "main.py").exists()
-
-
-def test_init_refuses_non_empty_dir_without_force(tmp_path: Path, capsys):
-    dest = tmp_path / "occupied"
-    dest.mkdir()
-    (dest / "junk.txt").write_text("...", encoding="utf-8")
-    rc = main(["init", str(dest)])
+def test_validate_requires_entrypoint(tmp_path: Path, capsys):
+    target = _harness_copy(tmp_path / "h")
+    (target / "run.sh").unlink()
+    rc = main(["validate", str(target)])
     assert rc == 1
-    assert "already exists" in capsys.readouterr().err
+    assert "entrypoint" in capsys.readouterr().err
 
 
 def _write_valid_outputs(dst: Path) -> None:

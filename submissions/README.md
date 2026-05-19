@@ -36,7 +36,6 @@ submissions/
    ```bash
    python -m scripts.judge_submission \
        --submission runs/example/output \
-       --corpus-manifest corpus/manifest.jsonl \
        --gold-graph judge/vault/gold_graph.json
    ```
 

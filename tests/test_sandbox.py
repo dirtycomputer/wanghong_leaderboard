@@ -14,22 +14,25 @@ from runner.sandbox import (
     build_docker_command,
     is_immutable_image_reference,
     run_in_sandbox,
-    validate_harness_manifest_safety,
+    validate_harness_safety,
     validate_outputs,
 )
 
 
 def _config(tmp_path: Path, **overrides) -> SandboxConfig:
-    corpus = tmp_path / "corpus"
-    corpus.mkdir()
     task = tmp_path / "task.yaml"
     task.write_text("prompt: hello\n", encoding="utf-8")
     output = tmp_path / "out"
     output.mkdir()
+    harness = tmp_path / "harness"
+    harness.mkdir()
+    (harness / "run.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
     defaults = dict(
         image_ref="ghcr.io/foo/bar@sha256:" + ("a" * 64),
         run_id="run-123",
-        corpus_root=corpus,
+        harness_dir=harness,
+        entrypoint="./run.sh",
+        capabilities={"model": True, "restricted_search": False, "native_tools": False},
         task_path=task,
         output_dir=output,
         proxy_api_base="http://leaderboard-proxy/v1",
@@ -71,13 +74,15 @@ def test_build_docker_command_pins_invariants(tmp_path: Path):
     assert "--cap-drop" in cmd and "ALL" in cmd
     assert "--security-opt" in cmd and "no-new-privileges" in cmd
     assert "--read-only" in cmd
-    # corpus is read-only
-    assert any(v.endswith(":/corpus:ro") for v in cmd)
+    assert any(v.endswith(":/harness:ro") for v in cmd)
+    assert not any(":/corpus:" in v for v in cmd)
     # output is writeable
     assert any(v.endswith(":/output:rw") for v in cmd)
     # MODEL_NAME pinned, MODEL_API_BASE forwarded
     assert "MODEL_NAME=google/gemma-4-31b-it" in cmd
     assert any(e.startswith("MODEL_API_BASE=") for e in cmd)
+    assert "--corpus" not in cmd
+    assert "./run.sh" in cmd
     assert config.image_ref in cmd
 
 
@@ -97,13 +102,21 @@ def test_validate_outputs_passes_when_all_present(tmp_path: Path):
     assert validate_outputs(tmp_path) == []
 
 
-def test_validate_harness_manifest_safety_rejects_unsafe_claims():
-    manifest = {"claims": {"uses_external_apis": True}}
+def test_validate_harness_safety_rejects_native_tools(tmp_path: Path):
+    (tmp_path / "run.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+    manifest = {"entrypoint": "./run.sh", "capabilities": {"native_tools": True}}
     with pytest.raises(SandboxError):
-        validate_harness_manifest_safety(manifest)
-    manifest = {"claims": {"requires_network": True}}
+        validate_harness_safety(manifest, tmp_path)
+
+
+def test_build_docker_command_requires_search_base(tmp_path: Path):
     with pytest.raises(SandboxError):
-        validate_harness_manifest_safety(manifest)
+        build_docker_command(
+            _config(
+                tmp_path,
+                capabilities={"model": True, "restricted_search": True, "native_tools": False},
+            )
+        )
 
 
 def test_run_in_sandbox_invokes_subprocess(tmp_path: Path):

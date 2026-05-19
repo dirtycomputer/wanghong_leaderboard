@@ -12,9 +12,8 @@ Usage::
         --prompts scripts/canary_prompts.yaml \
         --out reports/canary
 
-Set ``OPENROUTER_KEY`` in your environment (or .env) first. The script
-does not need any other credentials — MinerU and the judge key are not
-involved in the canary.
+Set ``OPENROUTER_KEY`` in your environment (or .env) first. The script does
+not need any other credentials; the judge key is not involved in the canary.
 """
 
 from __future__ import annotations

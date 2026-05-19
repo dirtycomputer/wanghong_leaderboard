@@ -1,6 +1,6 @@
 """Judge C — gold proof graph alignment.
 
-The hidden gold graph lives in ``judge/vault/gold_graph.json`` (an
+The hidden gold graph lives in ``judge/vault/<task>/gold_graph.json`` (an
 LLM-extracted artefact for the MVP, hand-vetted before P5). Judge C
 compares the submission's ``proof_graph.json`` against it across four
 structural axes and returns per-axis match scores plus an aggregate.

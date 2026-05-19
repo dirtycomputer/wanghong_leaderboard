@@ -1,0 +1,3 @@
+prefix_rule(pattern=["sort"], decision="allow")
+prefix_rule(pattern=["python3", "workspace/data/scripts/download_data.py", "--only", "apps", "--max-rows", "2", "--force"], decision="allow")
+prefix_rule(pattern=["python3", "-m", "py_compile", "workspace/data/scripts/download_data.py"], decision="allow")

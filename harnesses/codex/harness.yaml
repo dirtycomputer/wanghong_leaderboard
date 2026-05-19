@@ -1,0 +1,26 @@
+name: "codex"
+version: "0.1.0"
+kind: "codex"
+license: "Apache-2.0"
+image: "wanghong-codex@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+entrypoint: "./run.sh"
+
+resources:
+  max_wall_time_hours: 6
+  max_model_calls: 1000
+  max_total_tokens: 4000000
+  cpu: 8
+  memory_gb: 32
+  gpu: false
+
+capabilities:
+  model: true
+  restricted_search: true
+  native_tools: false
+
+outputs:
+  final_proof: "final_proof.md"
+  proof_graph: "proof_graph.json"
+  citations: "cited_sources.json"
+  self_critique: "self_critique.md"
+  trace: "trace.jsonl"

@@ -13,8 +13,7 @@ Checks
 3. ``cited_sources.json`` validates against
    ``schemas/cited_sources.schema.json``.
 4. ``run_manifest.json`` (if present) validates against its schema.
-5. Every cited arXiv id appears in the public corpus manifest.
-6. The phrase bank used by the Gemma canary is replayed against the
+5. The phrase bank used by the Gemma canary is replayed against the
    final proof / proof graph / self critique; matches surface as
    contamination evidence.
 """
@@ -28,13 +27,13 @@ from typing import Any
 
 import orjson
 
-from cli.kakeya_lb.schemas import (
+from judge.rubric import CAPS, Cap
+from runner.sandbox import REQUIRED_OUTPUTS
+from runner.schema_utils import (
     PROOF_GRAPH_SCHEMA_PATH,
     RUN_MANIFEST_SCHEMA_PATH,
     validate_against,
 )
-from judge.rubric import CAPS, Cap
-from runner.sandbox import REQUIRED_OUTPUTS
 
 CITED_SOURCES_SCHEMA_PATH = (
     Path(__file__).resolve().parents[1] / "schemas" / "cited_sources.schema.json"
@@ -73,7 +72,6 @@ class JudgeAResult:
     warnings: list[str]
     contamination_hits: list[dict[str, Any]]
     leak_evidence_count: int
-    citations_outside_corpus: list[str]
     files_present: list[str]
     files_missing: list[str]
     subscores: dict[str, float]
@@ -85,11 +83,7 @@ class JudgeAResult:
         return d
 
 
-def run(
-    submission_dir: Path,
-    *,
-    corpus_manifest_path: Path | None = None,
-) -> JudgeAResult:
+def run(submission_dir: Path) -> JudgeAResult:
     """Execute Judge A against a submission directory."""
     submission_dir = Path(submission_dir)
     issues: list[str] = []
@@ -97,7 +91,6 @@ def run(
     hits: list[dict[str, Any]] = []
     files_present: list[str] = []
     files_missing: list[str] = []
-    citations_outside_corpus: list[str] = []
     caps: list[Cap] = []
 
     # 1. File presence
@@ -118,11 +111,8 @@ def run(
             issues.append(f"proof_graph.json schema: {e}")
 
     cited_path = submission_dir / "cited_sources.json"
-    cited_obj: list[dict[str, Any]] | None = None
     if cited_path.exists():
         cited_loaded, errs = _validate_json(cited_path, CITED_SOURCES_SCHEMA_PATH)
-        if isinstance(cited_loaded, list):
-            cited_obj = cited_loaded
         for e in errs:
             issues.append(f"cited_sources.json schema: {e}")
 
@@ -132,16 +122,7 @@ def run(
         for e in errs:
             issues.append(f"run_manifest.json schema: {e}")
 
-    # 2. Citation containment
-    if cited_obj is not None and corpus_manifest_path is not None:
-        corpus_ids = _load_corpus_arxiv_ids(corpus_manifest_path)
-        for entry in cited_obj:
-            arxiv_id = entry.get("arxiv_id", "")
-            base = arxiv_id.split("v", 1)[0]
-            if base not in corpus_ids:
-                citations_outside_corpus.append(arxiv_id)
-
-    # 3. Phrase-bank scan across free-text outputs
+    # 2. Phrase-bank scan across free-text outputs
     for name in _SCAN_BASENAMES:
         path = submission_dir / name
         if not path.exists():
@@ -158,7 +139,7 @@ def run(
                     }
                 )
 
-    # 4. Survey-only detection (cap, not DQ)
+    # 3. Survey-only detection (cap, not DQ)
     if proof_graph_obj is not None and isinstance(
         proof_graph_obj.get("new_lemmas"), list
     ) and not proof_graph_obj["new_lemmas"]:
@@ -170,19 +151,7 @@ def run(
             )
         )
 
-    # 5. DQ caps
-    if citations_outside_corpus:
-        ids = ", ".join(sorted(set(citations_outside_corpus))[:5])
-        issues.append(
-            f"cited arxiv id(s) not in corpus manifest: {ids}"
-        )
-        caps.append(
-            Cap(
-                reason="disqualified: cited source(s) outside the pre-cutoff corpus",
-                cap=CAPS.DQ_VALUE,
-                source="judge_a_protocol",
-            )
-        )
+    # 4. DQ caps
     if hits:
         caps.append(
             Cap(
@@ -217,7 +186,6 @@ def run(
         warnings=warnings,
         contamination_hits=hits,
         leak_evidence_count=len(hits),
-        citations_outside_corpus=citations_outside_corpus,
         files_present=files_present,
         files_missing=files_missing,
         subscores={"protocol": protocol, "clarity": clarity},
@@ -232,21 +200,3 @@ def _validate_json(path: Path, schema_path: Path) -> tuple[Any | None, list[str]
         return None, [f"invalid JSON ({exc})"]
     errs = validate_against(loaded, schema_path)
     return loaded, errs
-
-
-def _load_corpus_arxiv_ids(manifest_path: Path) -> set[str]:
-    ids: set[str] = set()
-    if not manifest_path.exists():
-        return ids
-    for line in manifest_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            obj = orjson.loads(line)
-        except orjson.JSONDecodeError:
-            continue
-        arxiv_id = obj.get("arxiv_id")
-        if isinstance(arxiv_id, str):
-            ids.add(arxiv_id)
-    return ids

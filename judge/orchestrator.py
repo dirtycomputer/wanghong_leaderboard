@@ -45,16 +45,13 @@ def evaluate(
     *,
     clients: OrchestratorClients,
     gold_graph_path: Path,
-    corpus_manifest_path: Path | None = None,
     target_paper_parse_hash: str | None = None,
     rubric_version: str = RUBRIC_VERSION,
 ) -> dict[str, Any]:
     """Run the full judge stack and return the evaluation report dict."""
     submission_dir = Path(submission_dir)
 
-    a = a_protocol.run(
-        submission_dir, corpus_manifest_path=corpus_manifest_path
-    )
+    a = a_protocol.run(submission_dir)
     a_dq = any(cap.cap == 0.0 for cap in a.caps)
 
     if a_dq:
@@ -161,7 +158,6 @@ def _load_submission_meta(submission_dir: Path) -> dict[str, Any]:
     meta: dict[str, Any] = {
         "harness_name": None,
         "harness_version": None,
-        "corpus_hash": None,
     }
     run_manifest = submission_dir / "run_manifest.json"
     if run_manifest.exists():
@@ -171,5 +167,4 @@ def _load_submission_meta(submission_dir: Path) -> dict[str, Any]:
             return meta
         meta["harness_name"] = obj.get("harness_name")
         meta["harness_version"] = obj.get("harness_version")
-        meta["corpus_hash"] = obj.get("corpus_hash")
     return meta

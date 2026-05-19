@@ -6,12 +6,12 @@ It enforces:
 * The image is referenced by an immutable ``sha256`` digest — floating
   tags (``latest``, ``main``, version aliases) are rejected.
 * The container is attached to an ``--internal`` Docker network so it
-  cannot reach the public internet; only the leaderboard proxy on the
-  same network is reachable.
+  cannot reach the public internet; only approved internal services
+  such as the model proxy and restricted search are reachable.
 * All Linux capabilities are dropped, ``no-new-privileges`` is set,
   the process tree is pid-limited and resource-bounded.
-* The participant container never sees ``OPENROUTER_KEY`` or
-  ``MINERU_KEY``; only an ephemeral run token issued by the runner.
+* The participant container never sees ``OPENROUTER_KEY``; only an
+  ephemeral run token issued by the runner.
 """
 
 from runner.sandbox import (
@@ -21,7 +21,7 @@ from runner.sandbox import (
     SandboxRunResult,
     build_docker_command,
     is_immutable_image_reference,
-    validate_harness_manifest_safety,
+    validate_harness_safety,
     validate_outputs,
 )
 
@@ -32,6 +32,6 @@ __all__ = [
     "SandboxRunResult",
     "build_docker_command",
     "is_immutable_image_reference",
-    "validate_harness_manifest_safety",
+    "validate_harness_safety",
     "validate_outputs",
 ]

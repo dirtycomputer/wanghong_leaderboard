@@ -42,19 +42,10 @@ def _write_valid_submission(out: Path) -> None:
     )
 
 
-def _write_manifest(path: Path, ids: list[str]) -> None:
-    with path.open("wb") as fh:
-        for aid in ids:
-            fh.write(orjson.dumps({"arxiv_id": aid}))
-            fh.write(b"\n")
-
-
 def test_passes_for_well_formed_submission(tmp_path: Path):
     sub = tmp_path / "sub"
     _write_valid_submission(sub)
-    manifest = tmp_path / "manifest.jsonl"
-    _write_manifest(manifest, ["1909.10973"])
-    result = a_protocol.run(sub, corpus_manifest_path=manifest)
+    result = a_protocol.run(sub)
     assert result.passed
     assert result.disqualifying_issues == []
     assert result.contamination_hits == []
@@ -82,16 +73,6 @@ def test_detects_phrase_bank_contamination(tmp_path: Path):
     assert result.leak_evidence_count >= 1
     assert any("contaminated" in c.reason for c in result.caps)
     assert any(c.cap == 0.0 for c in result.caps)
-
-
-def test_rejects_citations_outside_corpus(tmp_path: Path):
-    sub = tmp_path / "sub"
-    _write_valid_submission(sub)
-    manifest = tmp_path / "manifest.jsonl"
-    _write_manifest(manifest, ["9999.99999"])  # the cited 1909.* not present
-    result = a_protocol.run(sub, corpus_manifest_path=manifest)
-    assert result.citations_outside_corpus == ["1909.10973v2"]
-    assert any("disqualified" in c.reason for c in result.caps)
 
 
 def test_caps_survey_only_when_no_new_lemmas(tmp_path: Path):

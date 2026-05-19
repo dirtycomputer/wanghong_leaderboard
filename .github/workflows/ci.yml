@@ -1,7 +1,6 @@
 # Continuous integration: lint + tests on every push to main and every PR.
-# Kept tight on purpose — no live OpenRouter / MinerU calls happen here. All
-# integration paths in the suite use injected fakes (see tests/test_baselines.py,
-# tests/test_judge_llm_layers.py, tests/test_harvest_arxiv.py).
+# Kept tight on purpose — no live OpenRouter, Exa, or judge calls happen here.
+# Integration paths in the suite use injected fakes.
 
 name: CI
 
@@ -26,6 +25,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
       - name: Ruff
-        run: ruff check proxy scripts tests corpus runner cli judge baselines leaderboard
+        run: ruff check proxy scripts tests runner judge leaderboard harnesses/tools
       - name: Pytest
         run: pytest -q

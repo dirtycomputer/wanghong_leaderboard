@@ -4,7 +4,7 @@ Judges run on the *evaluation* side and intentionally have access to
 post-cutoff information that the participant side does not:
 
 * the target paper ``arXiv:2502.17655`` in ``judge/vault/``,
-* a hidden LLM-extracted proof graph in ``judge/vault/gold_graph.json``,
+* a hidden LLM-extracted proof graph in ``judge/vault/<task>/gold_graph.json``,
 * the latest available LLMs via ``OPENROUTER_JUDGE_KEY``,
 * live web search for the contamination + novelty judges.
 

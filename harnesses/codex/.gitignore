@@ -1,0 +1,8 @@
+.codex/.tmp/
+.codex/tmp/
+.codex/cache/
+.codex/memories/
+.codex/sessions/
+.codex/shell_snapshots/
+.codex/*.sqlite
+.codex/*.sqlite-*

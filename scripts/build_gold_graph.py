@@ -1,9 +1,8 @@
 """Extract a hidden gold proof graph from the target paper.
 
-MVP path: feed ``judge/vault/target_paper/full.md`` (produced by
-``scripts/parse_target_paper.py``) to a strong LLM with the
+MVP path: feed ``judge/vault/<task>/target_paper/full.md`` to a strong LLM with the
 ``proof_graph.schema.json`` shape pinned in the system prompt, then
-schema-validate and save to ``judge/vault/gold_graph.json``.
+schema-validate and save to ``judge/vault/<task>/gold_graph.json``.
 
 Before P5 (alpha leaderboard) this artefact must be reviewed and
 edited by harmonic analysis / GMT reviewers. The output records its
@@ -13,8 +12,8 @@ bump it to ``source: "expert_curated"``.
 Usage::
 
     python -m scripts.build_gold_graph \
-        --target-md judge/vault/target_paper/full.md \
-        --out judge/vault/gold_graph.json
+        --target-md judge/vault/kakeya3d_discovery/target_paper/full.md \
+        --out judge/vault/kakeya3d_discovery/gold_graph.json
 """
 
 from __future__ import annotations
@@ -27,8 +26,8 @@ from pathlib import Path
 
 import orjson
 
-from cli.kakeya_lb.schemas import PROOF_GRAPH_SCHEMA_PATH, validate_against
 from judge.client import JudgeClient, JudgeError
+from runner.schema_utils import PROOF_GRAPH_SCHEMA_PATH, validate_against
 
 logger = logging.getLogger("build_gold_graph")
 
@@ -51,12 +50,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--target-md",
         type=Path,
-        default=Path("judge/vault/target_paper/full.md"),
+        default=Path("judge/vault/kakeya3d_discovery/target_paper/full.md"),
     )
     parser.add_argument(
         "--out",
         type=Path,
-        default=Path("judge/vault/gold_graph.json"),
+        default=Path("judge/vault/kakeya3d_discovery/gold_graph.json"),
     )
     parser.add_argument("--max-input-bytes", type=int, default=180_000)
     parser.add_argument("--verbose", action="store_true")
@@ -68,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.target_md.exists():
         logger.error(
-            "%s does not exist; run scripts.parse_target_paper first",
+            "%s does not exist; place the private target markdown there first",
             args.target_md,
         )
         return 1

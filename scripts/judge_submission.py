@@ -1,26 +1,31 @@
 """End-to-end CLI: run the 5-layer judge stack on a submission directory.
 
-Usage::
+    Usage::
 
     python -m scripts.judge_submission \
         --submission runs/example/output \
-        --corpus-manifest corpus/manifest.jsonl \
-        --gold-graph judge/vault/gold_graph.json \
+        --task tasks/kakeya3d_discovery.yaml \
         --report-out runs/example/evaluation_report.json
+
+By default the private judge files live under
+``judge/vault/<task-yaml-name>/``.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 import sys
 from pathlib import Path
 
 import orjson
 
-from cli.kakeya_lb.schemas import validate_against
 from judge.client import JudgeClient
 from judge.orchestrator import OrchestratorClients, evaluate
+from runner.schema_utils import validate_against
+from scripts import build_gold_graph
+from scripts.target_paper import ensure_target_markdown, task_vault_dir
 
 logger = logging.getLogger("judge_submission")
 
@@ -32,21 +37,18 @@ EVAL_REPORT_SCHEMA = (
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--submission", type=Path, required=True)
-    parser.add_argument(
-        "--corpus-manifest",
-        type=Path,
-        default=Path("corpus/manifest.jsonl"),
-    )
+    parser.add_argument("--task", type=Path, default=Path("tasks/kakeya3d_discovery.yaml"))
+    parser.add_argument("--vault-root", type=Path, default=Path("judge/vault"))
     parser.add_argument(
         "--gold-graph",
         type=Path,
-        default=Path("judge/vault/gold_graph.json"),
+        default=None,
     )
     parser.add_argument(
         "--target-parse-hash",
         type=str,
         default=None,
-        help="Optional SHA-256 of judge/vault/target_paper/full.md.",
+        help="Optional SHA-256 of judge/vault/<task>/target_paper/full.md.",
     )
     parser.add_argument("--report-out", type=Path, default=None)
     parser.add_argument(
@@ -72,12 +74,23 @@ def main(argv: list[str] | None = None) -> int:
     if not args.submission.exists():
         logger.error("submission %s not found", args.submission)
         return 1
-    if not args.gold_graph.exists():
-        logger.error(
-            "gold graph %s not found; run scripts.build_gold_graph first",
-            args.gold_graph,
-        )
+    if not args.task.exists():
+        logger.error("task %s not found", args.task)
         return 1
+
+    task_dir = task_vault_dir(args.task, args.vault_root)
+    gold_graph = args.gold_graph or (task_dir / "gold_graph.json")
+    target_parse_hash = args.target_parse_hash
+    if not gold_graph.exists():
+        target_md, target_hash = ensure_target_markdown(args.task, args.vault_root)
+        target_parse_hash = target_parse_hash or target_hash
+        rc = build_gold_graph.main(["--target-md", str(target_md), "--out", str(gold_graph)])
+        if rc != 0:
+            return rc
+    elif target_parse_hash is None:
+        target_md = task_dir / "target_paper" / "full.md"
+        if target_md.exists():
+            target_parse_hash = _sha256(target_md)
 
     web_client = JudgeClient.from_env(model=args.web_model, web_enabled=True)
     offline_client = JudgeClient.from_env(model=args.offline_model, web_enabled=False)
@@ -86,11 +99,8 @@ def main(argv: list[str] | None = None) -> int:
     report = evaluate(
         args.submission,
         clients=clients,
-        gold_graph_path=args.gold_graph,
-        corpus_manifest_path=(
-            args.corpus_manifest if args.corpus_manifest.exists() else None
-        ),
-        target_paper_parse_hash=args.target_parse_hash,
+        gold_graph_path=gold_graph,
+        target_paper_parse_hash=target_parse_hash,
     )
 
     schema_errors = validate_against(report, EVAL_REPORT_SCHEMA)
@@ -113,6 +123,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(out_path)
     return 0
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    digest.update(path.read_bytes())
+    return digest.hexdigest()
 
 
 if __name__ == "__main__":

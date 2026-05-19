@@ -9,15 +9,19 @@
     "schema_version",
     "harness_name",
     "harness_version",
-    "track",
+    "harness_kind",
     "model",
-    "corpus_hash",
     "outputs"
   ],
   "properties": {
     "schema_version": { "type": "string", "const": "1.0" },
     "harness_name": { "type": "string", "minLength": 1 },
     "harness_version": { "type": "string", "minLength": 1 },
+    "harness_kind": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
     "git_commit": {
       "type": "string",
       "pattern": "^[0-9a-f]{7,40}$",
@@ -28,22 +32,30 @@
       "pattern": "^sha256:[0-9a-f]{64}$",
       "description": "Immutable Docker image digest. The runner refuses floating tags (latest, main, vN)."
     },
-    "track": {
-      "type": "string",
-      "enum": [
-        "zero_shot_single_prompt",
-        "literature_retrieval_only",
-        "agentic_research",
-        "structured_proof_search"
-      ]
-    },
     "model": {
       "type": "string",
       "const": "google/gemma-4-31b-it"
     },
+    "restricted_search": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "provider": { "type": "string", "const": "exa" },
+        "cutoff": {
+          "type": "string",
+          "description": "ISO-8601 latest allowed publication date for web search results."
+        }
+      }
+    },
     "provider_lock": {
       "type": ["string", "null"],
       "description": "OpenRouter provider slug if pinned, otherwise null. Recorded for reproducibility."
+    },
+    "created_at": {
+      "type": "string",
+      "description": "UTC timestamp for when the harness wrote this manifest."
     },
     "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
     "top_p": { "type": "number", "minimum": 0, "maximum": 1 },
@@ -52,11 +64,6 @@
     "input_tokens_total": { "type": "integer", "minimum": 0 },
     "output_tokens_total": { "type": "integer", "minimum": 0 },
     "max_tokens_budget": { "type": "integer", "minimum": 0 },
-    "corpus_hash": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$",
-      "description": "SHA-256 from corpus/corpus_hash.txt that this run consumed."
-    },
     "outputs": {
       "type": "object",
       "additionalProperties": false,

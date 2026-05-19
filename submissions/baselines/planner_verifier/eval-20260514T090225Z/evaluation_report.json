@@ -7,7 +7,6 @@
   "submission": {
     "harness_name": null,
     "harness_version": null,
-    "corpus_hash": null,
     "path": "/tmp/wh_bench2/planner_verifier"
   },
   "judges": {

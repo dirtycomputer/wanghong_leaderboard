@@ -33,15 +33,15 @@ dev = [
 
 [project.scripts]
 wh-canary = "scripts.canary_gemma:main"
-kakeya-lb = "cli.kakeya_lb.main:main"
+kakeya-lb = "runner.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = [
-    "proxy*", "corpus*", "judge*", "runner*", "scripts*", "cli*",
-    "baselines*", "leaderboard*",
+    "proxy*", "judge*", "runner*", "scripts*",
+    "leaderboard*", "harnesses.tools*",
 ]
-exclude = ["tests*", "judge.vault*", "starter*"]
+exclude = ["tests*", "judge.vault*"]
 
 [tool.setuptools.package-data]
 leaderboard = ["static/*.css"]

@@ -1,12 +1,12 @@
-"""Docker-backed sandbox for participant harness runs.
+"""Docker-backed sandbox for self-contained harness directories.
 
 The module is split so each side effect (subprocess, filesystem) is
 isolated and tested in mocks:
 
 * :func:`is_immutable_image_reference` — pure string check; the only
   acceptable image reference is ``<name>@sha256:<64 hex>``.
-* :func:`validate_harness_manifest_safety` — refuses harnesses that
-  claim external APIs or network access.
+* :func:`validate_harness_safety` — refuses native tools and unsafe
+  entrypoints.
 * :func:`build_docker_command` — pure constructor of the
   ``docker run …`` argv. No subprocess invocation; tested directly.
 * :func:`validate_outputs` — checks the five required files exist
@@ -52,7 +52,9 @@ class SandboxConfig:
 
     image_ref: str  # MUST be ``name@sha256:…``
     run_id: str
-    corpus_root: Path
+    harness_dir: Path
+    entrypoint: str
+    capabilities: dict[str, bool]
     task_path: Path
     output_dir: Path
     proxy_api_base: str
@@ -60,6 +62,9 @@ class SandboxConfig:
     cpu: int
     memory_gb: int
     max_wall_time_seconds: int
+    search_api_base: str | None = None
+    search_token: str | None = None
+    search_cutoff: str = "2025-01-01T00:00:00Z"
     network: str = INTERNAL_NETWORK
     extra_env: tuple[tuple[str, str], ...] = ()
 
@@ -78,19 +83,20 @@ def is_immutable_image_reference(reference: str) -> bool:
     return bool(_IMMUTABLE_REFERENCE.match(reference or ""))
 
 
-def validate_harness_manifest_safety(manifest: dict[str, Any]) -> None:
-    """Raise :class:`SandboxError` if the manifest disagrees with the runtime invariants."""
-    claims = manifest.get("claims") or {}
-    if claims.get("uses_external_apis"):
-        raise SandboxError(
-            "harness.yaml claims uses_external_apis=true; the runner "
-            "isolates the container and only the leaderboard proxy is reachable"
-        )
-    if claims.get("requires_network"):
-        raise SandboxError(
-            "harness.yaml claims requires_network=true; only the leaderboard "
-            "proxy is reachable from the participant container"
-        )
+def validate_harness_safety(manifest: dict[str, Any], harness_dir: Path) -> None:
+    """Raise :class:`SandboxError` if the harness is not runnable safely."""
+    capabilities = manifest.get("capabilities") or {}
+    if capabilities.get("native_tools") is not False:
+        raise SandboxError("capabilities.native_tools must be false")
+
+    entrypoint = str(manifest.get("entrypoint") or "")
+    if entrypoint != "./run.sh":
+        raise SandboxError("entrypoint must be ./run.sh")
+    run_sh = Path(harness_dir) / "run.sh"
+    if not run_sh.exists():
+        raise SandboxError(f"entrypoint {run_sh} not found")
+    if not run_sh.is_file():
+        raise SandboxError(f"entrypoint {run_sh} is not a file")
 
 
 def build_docker_command(config: SandboxConfig) -> list[str]:
@@ -100,12 +106,43 @@ def build_docker_command(config: SandboxConfig) -> list[str]:
             f"image reference {config.image_ref!r} is not immutable; "
             "submissions must pin name@sha256:<digest>"
         )
+    if config.entrypoint != "./run.sh":
+        raise SandboxError("entrypoint must be ./run.sh")
+    if config.capabilities.get("native_tools") is not False:
+        raise SandboxError("capabilities.native_tools must be false")
+    if config.capabilities.get("restricted_search") and not config.search_api_base:
+        raise SandboxError("restricted_search=true requires search_api_base")
+
+    env: list[tuple[str, str]] = [
+        ("RUN_ID", config.run_id),
+        ("DISABLE_NATIVE_TOOLS", "1"),
+        ("DISABLE_NATIVE_WEB_SEARCH", "1"),
+    ]
+    if config.capabilities.get("model"):
+        env.extend(
+            [
+                ("MODEL_API_BASE", config.proxy_api_base),
+                ("MODEL_API_KEY", config.proxy_token),
+                ("MODEL_NAME", "google/gemma-4-31b-it"),
+            ]
+        )
+    if config.capabilities.get("restricted_search"):
+        assert config.search_api_base is not None
+        env.extend(
+            [
+                ("SEARCH_API_BASE", config.search_api_base),
+                ("SEARCH_CUTOFF", config.search_cutoff),
+            ]
+        )
+        if config.search_token:
+            env.append(("SEARCH_API_KEY", config.search_token))
 
     cmd: list[str] = [
         "docker", "run",
         "--rm",
         "--name", f"kakeya-{config.run_id}",
         "--network", config.network,
+        "--workdir", "/harness",
         "--cap-drop", "ALL",
         "--security-opt", "no-new-privileges",
         "--read-only",
@@ -115,25 +152,21 @@ def build_docker_command(config: SandboxConfig) -> list[str]:
         "--pids-limit", str(_DEFAULT_PIDS_LIMIT),
         "--ulimit", "nofile=4096:4096",
         "--stop-timeout", "30",
-        "-v", f"{config.corpus_root.resolve()}:/corpus:ro",
+        "-v", f"{config.harness_dir.resolve()}:/harness:ro",
         "-v", f"{config.task_path.resolve()}:/task/task.yaml:ro",
         "-v", f"{config.output_dir.resolve()}:/output:rw",
-        "-e", f"MODEL_API_BASE={config.proxy_api_base}",
-        "-e", f"MODEL_API_KEY={config.proxy_token}",
-        "-e", "MODEL_NAME=google/gemma-4-31b-it",
-        "-e", f"RUN_ID={config.run_id}",
     ]
+    for key, value in env:
+        cmd.extend(["-e", f"{key}={value}"])
     for key, value in config.extra_env:
         cmd.extend(["-e", f"{key}={value}"])
 
     cmd.append(config.image_ref)
     cmd.extend(
         [
+            config.entrypoint,
             "--task", "/task/task.yaml",
-            "--corpus", "/corpus",
             "--output", "/output",
-            "--model-api-base", config.proxy_api_base,
-            "--model-api-key", config.proxy_token,
         ]
     )
     return cmd

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/dirtycomputer/wanghong_leaderboard/schemas/cited_sources.schema.json",
   "title": "cited_sources.json",
-  "description": "Deduplicated list of corpus papers a harness explicitly used. Judge A re-checks every arxiv_id against the corpus manifest; entries pointing at papers outside the corpus are disqualifying.",
+  "description": "Deduplicated list of pre-cutoff sources a harness explicitly used.",
   "type": "array",
   "items": {
     "type": "object",

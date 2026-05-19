@@ -8,9 +8,9 @@ from typing import Any
 
 import orjson
 
-from cli.kakeya_lb.schemas import validate_against
 from judge.client import JudgeResponse
 from judge.orchestrator import OrchestratorClients, evaluate
+from runner.schema_utils import validate_against
 
 EVAL_REPORT_SCHEMA = (
     Path(__file__).resolve().parents[1] / "schemas" / "evaluation_report.schema.json"
@@ -80,12 +80,6 @@ def _write_gold(tmp_path: Path) -> Path:
     return gold
 
 
-def _write_manifest(tmp_path: Path) -> Path:
-    manifest = tmp_path / "manifest.jsonl"
-    manifest.write_bytes(orjson.dumps({"arxiv_id": "1909.10973"}) + b"\n")
-    return manifest
-
-
 # B, C, D, E payloads used for a "clean" pass.
 _GOOD_PAYLOADS = {
     "B": {
@@ -122,14 +116,12 @@ _GOOD_PAYLOADS = {
 def test_orchestrator_clean_run_produces_ranked_verdict(tmp_path: Path):
     sub = _write_sub(tmp_path)
     gold = _write_gold(tmp_path)
-    manifest = _write_manifest(tmp_path)
     web = FakeClient(payloads=[_GOOD_PAYLOADS["B"], _GOOD_PAYLOADS["E"]])
     offline = FakeClient(payloads=[_GOOD_PAYLOADS["C"], _GOOD_PAYLOADS["D"]])
     report = evaluate(
         sub,
         clients=OrchestratorClients(web_client=web, offline_client=offline),
         gold_graph_path=gold,
-        corpus_manifest_path=manifest,
     )
     assert report["verdict"] == "RANKED"
     assert report["applied_caps"] == []

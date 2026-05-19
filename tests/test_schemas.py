@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from cli.kakeya_lb.schemas import (
+from runner.schema_utils import (
     HARNESS_MANIFEST_SCHEMA_PATH,
     PROOF_GRAPH_SCHEMA_PATH,
     RUN_MANIFEST_SCHEMA_PATH,
@@ -20,8 +20,10 @@ from cli.kakeya_lb.schemas import (
 @pytest.fixture
 def harness_manifest() -> dict:
     return {
-        "name": "starter-harness",
+        "name": "model",
         "version": "0.1.0",
+        "kind": "model",
+        "image": "ghcr.io/x/y@sha256:" + "a" * 64,
         "license": "MIT",
         "authors": [{"name": "Alice", "affiliation": "Mu"}],
         "entrypoint": "./run.sh",
@@ -33,18 +35,17 @@ def harness_manifest() -> dict:
             "memory_gb": 32,
             "gpu": False,
         },
-        "tracks": ["zero_shot_single_prompt"],
+        "capabilities": {
+            "model": True,
+            "restricted_search": False,
+            "native_tools": False,
+        },
         "outputs": {
             "final_proof": "final_proof.md",
             "proof_graph": "proof_graph.json",
             "citations": "cited_sources.json",
             "self_critique": "self_critique.md",
             "trace": "trace.jsonl",
-        },
-        "claims": {
-            "uses_external_apis": False,
-            "requires_network": False,
-            "uses_precomputed_embeddings": False,
         },
     }
 
@@ -84,11 +85,11 @@ def proof_graph() -> dict:
 def run_manifest() -> dict:
     return {
         "schema_version": "1.0",
-        "harness_name": "starter-harness",
+        "harness_name": "model",
         "harness_version": "0.1.0",
-        "track": "zero_shot_single_prompt",
+        "harness_kind": "model",
         "model": "google/gemma-4-31b-it",
-        "corpus_hash": "0" * 64,
+        "restricted_search": {"enabled": False},
         "outputs": {
             "final_proof": "final_proof.md",
             "proof_graph": "proof_graph.json",
@@ -99,16 +100,16 @@ def run_manifest() -> dict:
     }
 
 
-def test_harness_manifest_accepts_starter_yaml():
-    raw = yaml.safe_load(Path("starter/harness.yaml").read_text(encoding="utf-8"))
+def test_harness_manifest_accepts_model_yaml():
+    raw = yaml.safe_load(Path("harnesses/model/harness.yaml").read_text(encoding="utf-8"))
     errors = validate_against(raw, HARNESS_MANIFEST_SCHEMA_PATH)
     assert errors == []
 
 
-def test_harness_manifest_rejects_unknown_track(harness_manifest):
-    harness_manifest["tracks"] = ["build-your-own-track"]
+def test_harness_manifest_rejects_native_tools(harness_manifest):
+    harness_manifest["capabilities"]["native_tools"] = True
     errors = validate_against(harness_manifest, HARNESS_MANIFEST_SCHEMA_PATH)
-    assert any("tracks" in e for e in errors)
+    assert any("native_tools" in e for e in errors)
 
 
 def test_harness_manifest_rejects_excessive_resources(harness_manifest):

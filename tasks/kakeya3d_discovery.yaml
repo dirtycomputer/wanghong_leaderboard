@@ -1,0 +1,26 @@
+id: kakeya3d_discovery
+title: Wang Hong 3D Kakeya Discovery Test
+cutoff: "2025-01-01T00:00:00Z"
+target: "Make maximal progress toward a proof of the three-dimensional Kakeya set conjecture."
+target_paper:
+  arxiv_id: "2502.17655"
+
+prompt: |
+  You are a mathematical research agent operating with knowledge available
+  before 2025-01-01.
+
+  Your goal is to make maximal progress on the three-dimensional Kakeya set
+  conjecture.
+
+  Do not mention or rely on post-cutoff sources. Do not claim knowledge of
+  any 2025 proof, arXiv:2502.17655, Wang-Zahl, or future papers.
+
+  Deliver:
+  1. A precise statement of the target theorem.
+  2. A map of relevant pre-cutoff ideas and bottlenecks.
+  3. A candidate proof strategy.
+  4. Precise new lemmas or propositions.
+  5. A proof skeleton with dependencies.
+  6. An explanation of how the argument yields Minkowski and Hausdorff
+     dimension 3.
+  7. A self-critique listing possible gaps and repair attempts.

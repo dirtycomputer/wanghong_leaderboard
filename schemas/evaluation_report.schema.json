@@ -29,8 +29,7 @@
       "properties": {
         "path": { "type": "string" },
         "harness_name": { "type": ["string", "null"] },
-        "harness_version": { "type": ["string", "null"] },
-        "corpus_hash": { "type": ["string", "null"] }
+        "harness_version": { "type": ["string", "null"] }
       }
     },
     "judges": {

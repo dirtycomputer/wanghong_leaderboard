@@ -8,9 +8,17 @@ harnesses/<name>/
   run.sh
 ```
 
-`run.sh` performs the task. It reads `/task/task.yaml` and must write the five
-required output files under `/output`.
+`run.sh` performs the task. In local testing, call it directly with:
 
-The runner mounts only approved internal services. Use `MODEL_API_BASE` for
-model calls and `SEARCH_API_BASE` for restricted pre-cutoff search when the
-harness enables it.
+```bash
+bash harnesses/<name>/run.sh --task tasks/kakeya3d_discovery.yaml --output runs/<name>/output
+```
+
+The official Docker runner path is not fully wired through yet.
+
+Restricted search currently means two explicit tools:
+
+```text
+openalex_search.py
+exa_search.py
+```

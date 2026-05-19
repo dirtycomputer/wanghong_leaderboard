@@ -35,14 +35,21 @@ Harnesses may not use:
 
 Search is provided by `harnesses/tools/restricted_search`.
 
-The service uses Exa and enforces a publication-date cutoff. The default cutoff
-is:
+The current restricted-search tools are OpenAlex and Exa. Both enforce the
+same default cutoff:
 
 ```text
 2025-01-01T00:00:00Z
 ```
 
-Harnesses that need retrieval should call `SEARCH_API_BASE/search`.
+Codex local testing exposes:
+
+```text
+openalex_search.py "query" 5
+exa_search.py "query" 5
+```
+
+The full runner integration for these tools is still being finalized.
 
 ## Outputs
 

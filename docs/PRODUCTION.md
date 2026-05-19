@@ -1,10 +1,11 @@
 # Production
 
-Production has four moving pieces:
+Production is not fully wired through yet. This document records the intended
+pieces and the current local-test path.
 
 ```text
 proxy                         model API gate
-harnesses/tools/restricted_search  Exa search gate
+harnesses/tools/restricted_search  OpenAlex/Exa search tools
 runner                        Docker sandbox
 judge                         evaluation stack
 ```
@@ -19,16 +20,17 @@ uvicorn proxy.main:app --host 0.0.0.0 --port 8080
 The proxy rejects native tools, web-search payloads, OpenRouter web plugins, and
 provider fallback.
 
-## 2. Start Restricted Search
+## 2. Restricted Search
 
-```bash
-EXA_API_KEY=xxx \
-RESTRICTED_SEARCH_CUTOFF=2025-01-01T00:00:00Z \
-uvicorn harnesses.tools.restricted_search.main:app --host 0.0.0.0 --port 8088
+Current local testing uses direct command tools:
+
+```text
+openalex_search.py
+exa_search.py
 ```
 
-If `RESTRICTED_SEARCH_TOKEN` is set, pass the same value to the runner as
-`--search-api-key`.
+The FastAPI wrapper exists in `harnesses/tools/restricted_search/main.py`, but
+the official runner integration is still not the blessed path.
 
 ## 3. Validate A Harness
 
@@ -39,14 +41,13 @@ python3 -m runner.cli validate harnesses/model_rag
 ## 4. Run A Harness
 
 ```bash
-python3 -m runner.run_harness \
-  --harness harnesses/model_rag \
-  --task path/to/task.yaml \
-  --output runs/model_rag/output \
-  --model-api-base http://proxy:8080/v1 \
-  --model-api-key "$MODEL_API_KEY" \
-  --search-api-base http://restricted-search:8088
+bash harnesses/codex/run.sh \
+  --task tasks/kakeya3d_discovery.yaml \
+  --output runs/codex/output
 ```
+
+This `run.sh` command is currently a local test/debug path. The Docker runner
+flow still needs to be completed and validated.
 
 ## 5. Judge A Run
 
